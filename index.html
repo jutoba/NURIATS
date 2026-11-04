@@ -159,6 +159,7 @@ table.cats td.bad,td.n.bad{background:var(--warn-soft)!important;color:var(--war
       <button role="tab" data-tab="res" aria-selected="true">Reparto</button>
       <button role="tab" data-tab="team" aria-selected="false">Equipo</button>
       <button role="tab" data-tab="proj" aria-selected="false">Proyectos</button>
+      <button role="tab" data-tab="calc" aria-selected="false">Calculadora</button>
       <button role="tab" data-tab="cfg" aria-selected="false">Calendario y reglas</button>
       <button role="tab" data-tab="data" aria-selected="false">Guardar / cargar</button>
     </nav>
@@ -205,6 +206,7 @@ let S;
 try{S=JSON.parse(localStorage.getItem(STORE))}catch(e){S=null}
 if(!S||!Array.isArray(S.people))S=blank();
 if(!S.manual)S.manual={};
+if(!S.calc)S.calc={proj:null,rows:[]};
 if(!S.teamSeeded){if(!S.people.length)S.people=defaultTeam();S.teamSeeded=true}
 function save(){try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}}
 
@@ -237,10 +239,11 @@ function monthLabel(){const [y,m]=S.month.split('-').map(Number);return new Date
 /* ---------- motor de reparto ---------- */
 function poolOf(p){
   if(p.cap===null||p.cap===''||p.cap===undefined||isNaN(+p.cap))return Infinity;
-  const w=Math.min(Math.max(+p.woff||0,0),99)/100, cap=+p.cap;
-  const pool=cap/(1-w); // WOFF = % de descuento sobre el fee
-  return Math.max(pool-(+p.prev||0),0);
+  return Math.max(+p.cap-(+p.prev||0),0);
 }
+// coste de una hora en el proyecto: fee × (1 − WOFF)
+const woffOf=p=>Math.min(Math.max(+p.woff||0,0),100)/100;
+const rateOf=(p,pe)=>(+pe.fee||0)*(1-woffOf(p));
 function manualOf(pid){return (S.manual[S.month]||{})[pid]}
 function compute(){
   const days=monthDays(), step=+S.settings.step||0.5;
@@ -260,7 +263,7 @@ function compute(){
       if(!projById(id))continue;
       const row=days.map((x,i)=>+man[id][i]||0);
       P.grid[id]=row; const h=row.reduce((a,b)=>a+b,0);
-      P.alloc[id]=h; used[id]+=h*(+P.pe.fee||0); pool[id]-=h*(+P.pe.fee||0);
+      const r=rateOf(projById(id),P.pe); P.alloc[id]=h; used[id]+=h*r; pool[id]-=h*r;
     }
   }
   // 2) reparto automático para el resto
@@ -273,19 +276,19 @@ function compute(){
       progress=false;
       for(const P of people){
         if(P.manual||P.R<=1e-9)continue;
-        const fee=+P.pe.fee||0, give=Math.min(step,P.R);
+        const give=Math.min(step,P.R);
         let best=null,bestScore=-Infinity;
         for(const pr of projs){
           if(pr.type!==type)continue;
           const own=P.pe.projects.includes(pr.id);
           if((who==='own')!==own)continue;
-          if(pool[pr.id]+1e-6<give*fee)continue;
+          if(pool[pr.id]+1e-6<give*rateOf(pr,P.pe))continue;
           const score=(pool[pr.id]===Infinity?1e15:pool[pr.id])-(P.alloc[pr.id]||0)*1e-3;
           if(score>bestScore){bestScore=score;best=pr}
         }
         if(!best)continue;
         P.alloc[best.id]=(P.alloc[best.id]||0)+give;
-        P.R-=give; pool[best.id]-=give*fee; used[best.id]+=give*fee;
+        const r=rateOf(best,P.pe); P.R-=give; pool[best.id]-=give*r; used[best.id]+=give*r;
         progress=true;
       }
     }
@@ -363,7 +366,7 @@ function viewRes(){
   if(!selPerson||!S.people.find(p=>p.id===selPerson))selPerson=S.people[0].id;
   const sel=R.people.find(P=>P.pe.id===selPerson);
   const wrong=R.people.filter(P=>!isOk(P));
-  const over=S.projects.filter(p=>R.pool[p.id]<-1);
+  const over=S.projects.filter(p=>R.pool[p.id]<-0.005);
   const noPromo=!S.projects.some(p=>p.type==='promo'&&!isFinite(poolOf(p)));
 
   return `
@@ -416,7 +419,7 @@ function viewRes(){
       <tbody>${S.projects.map(p=>{
         const pool=poolOf(p), u=R.used[p.id], hrs=R.people.reduce((a,P)=>a+(P.alloc[p.id]||0),0);
         const pct=isFinite(pool)&&pool>0?Math.min(u/pool*100,100):(u>0?100:0);
-        const isOver=R.pool[p.id]<-1;
+        const isOver=R.pool[p.id]<-0.005;
         return `<tr><td><b>${esc(p.name)}</b><br><code class="job">${esc(p.code)}</code></td>
         <td><span class="pill ${p.type}">${TYPES[p.type]}</span></td>
         <td class="n">${isFinite(pool)?fmtE(+p.cap):'Sin tope'}</td><td class="n">${isFinite(pool)?(+p.woff||0)+'%':'—'}</td>
@@ -493,7 +496,7 @@ function viewProj(){
     <div class="row"><h2>Proyectos</h2><span class="spacer"></span><button class="btn primary" id="addProj">Añadir proyecto</button></div>
     <p class="sub">Tope mensual en euros y WOFF en %. Deja el tope vacío en el proyecto de promoción para que absorba las horas que sobren. “Ya consumido” resta lo que se haya cargado este mes fuera de esta herramienta.</p>
     ${S.projects.length?`<div class="scroll"><table class="edit">
-      <thead><tr><th>Narrative</th><th>Código job</th><th>Descripción</th><th>Tipo</th><th class="n">Tope mes €</th><th class="n">WOFF % dto.</th><th class="n">Ya consumido €</th><th class="n">Disponible</th><th></th></tr></thead>
+      <thead><tr><th>Narrative</th><th>Código job</th><th>Descripción</th><th>Tipo</th><th class="n">Tope mes €</th><th class="n">WOFF % dto.</th><th class="n">Ya consumido €</th><th class="n">Disponible mes</th><th></th></tr></thead>
       <tbody>${S.projects.map(p=>`<tr data-prid="${p.id}">
         <td><input type="text" id="jn-${p.id}" data-f="name" value="${esc(p.name)}" placeholder="Narrative"></td>
         <td><input type="text" id="jc-${p.id}" data-f="code" value="${esc(p.code)}" placeholder="Código" class="mono"></td>
@@ -505,7 +508,7 @@ function viewProj(){
         <td class="n">${fmtE(poolOf(p))}</td>
         <td><button class="btn ghost" data-delproj="${p.id}" aria-label="Quitar ${esc(p.name)}">Quitar</button></td></tr>`).join('')}</tbody>
     </table></div>`:`<div class="emptybox">Aún no hay proyectos. Pulsa <b>Añadir proyecto</b> y rellena narrative, código, tipo, tope y WOFF.</div>`}
-    <div class="note"><b>Cómo se calcula el disponible.</b> El WOFF es el descuento sobre el fee de cada persona: con un 76 % de WOFF, cada hora cuenta al 24 % de su fee. Ejemplo: Santander, 6.850 € al mes y 76 % de WOFF; un Senior 1 (187 €/h) cuenta 187 × 0,24 = 44,88 € por hora, así que puede cargar 6.850 ÷ 44,88 = 152,6 h. El tope se comparte entre todos los que cargan en el proyecto.</div>
+    <div class="note"><b>Cómo se calcula.</b> El WOFF se aplica a cada hora: una hora cuesta fee × (1 − WOFF). Con un 76 % de WOFF, una hora de un Senior 1 (187 €/h) cuenta 44,88 € y una de un Assistant 2 (149 €/h) 35,76 €. La suma de todas las horas del mes no puede pasar del tope. Para cuadrar a mano cuántas horas caben, usa la Calculadora.</div>
   </section>`;
 }
 
@@ -547,12 +550,65 @@ function viewData(){
   </section>`;
 }
 
+
+/* ---------- calculadora de tope ---------- */
+const floorQ=(x,q)=>Math.max(Math.floor(x/q+1e-9)*q,0);
+function calcState(){
+  const C=S.calc; const capped=S.projects.filter(p=>isFinite(poolOf(p)));
+  if(!capped.find(p=>p.id===C.proj))C.proj=capped[0]?capped[0].id:null;
+  C.rows=C.rows.filter(r=>S.people.find(p=>p.id===r.pid));
+  return {C,capped,pr:projById(C.proj)};
+}
+function viewCalc(){
+  const {C,capped,pr}=calcState();
+  if(!pr)return `<section class="panel"><h2>Calculadora de tope</h2><div class="emptybox">Añade en Proyectos al menos un proyecto con tope para usar la calculadora.</div></section>`;
+  const w=woffOf(pr), budget=poolOf(pr), q=+S.settings.step||0.5;
+  const lines=C.rows.map(r=>{const pe=S.people.find(p=>p.id===r.pid);const rate=rateOf(pr,pe);return {r,pe,rate,cost:(+r.h||0)*rate}});
+  const used=lines.reduce((a,l)=>a+l.cost,0), left=budget-used;
+  const notIn=S.people.filter(p=>!C.rows.some(r=>r.pid===p.id));
+  return `<section class="panel">
+    <h2>Calculadora de tope</h2>
+    <p class="sub">Prueba cuántas horas caben en un proyecto: cada hora cuenta fee × (1 − WOFF) y la suma no puede pasar del tope del mes. Esto no cambia el reparto; es para hacer cuentas.</p>
+    <div class="row">
+      <label class="f">Proyecto<select id="calcProj">${capped.map(p=>`<option value="${p.id}" ${p.id===pr.id?'selected':''}>${esc(p.name||'(sin nombre)')}</option>`).join('')}</select></label>
+      <span class="spacer"></span>
+      <button class="btn" id="calcLoad">Traer horas del reparto de ${esc(monthLabel())}</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Tope del mes</span><span class="v">${fmtE(budget)}</span></div>
+      <div class="stat"><span class="k">WOFF</span><span class="v">${Math.round(w*100)}%</span></div>
+      <div class="stat"><span class="k">Usado</span><span class="v">${fmtE2(used)}</span></div>
+      <div class="stat"><span class="k">${left<-0.005?'Te pasas':'Queda'}</span><span class="v ${left<-0.005?'warn':'ok'}">${fmtE2(Math.abs(left))}</span></div>
+    </div>
+    <div class="scroll"><table class="edit">
+      <thead><tr><th>Persona</th><th class="n">Fee</th><th class="n">Hora con WOFF</th><th class="n">Horas</th><th class="n">Coste</th><th class="n">Máximo posible</th><th></th></tr></thead>
+      <tbody>${lines.map((l,k)=>{const max=(+l.r.h||0)+floorQ(left/l.rate,q);
+        return `<tr data-ci="${k}">
+        <td><select id="cp-${k}" data-cpid>${S.people.filter(p=>p.id===l.pe.id||notIn.includes(p)).map(p=>`<option value="${p.id}" ${p.id===l.pe.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></td>
+        <td class="n">${fmtE(+l.pe.fee||0)}</td><td class="n">${fmtE2(l.rate)}</td>
+        <td><input type="number" id="ch-${k}" data-ch min="0" step="${q}" value="${esc(l.r.h)}" style="width:90px"></td>
+        <td class="n">${fmtE2(l.cost)}</td>
+        <td class="n">${fmtH(Math.max(max,0))} h</td>
+        <td class="acts"><button class="btn ghost ok" data-cmax="${k}">Al máximo</button><button class="btn ghost" data-cdel="${k}">Quitar</button></td></tr>`}).join('')}
+      </tbody>
+      <tfoot><tr><td>Total</td><td></td><td></td><td class="n">${fmtH(lines.reduce((a,l)=>a+(+l.r.h||0),0))}</td><td class="n ${left<-0.005?'bad':''}">${fmtE2(used)}</td><td></td><td></td></tr></tfoot>
+    </table></div>
+    <div class="row">
+      ${notIn.length?`<label class="f">Añadir persona<select id="calcAddSel">${notIn.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label><button class="btn" id="calcAdd" style="align-self:flex-end">Añadir</button>`:''}
+      <span class="spacer"></span>
+      ${C.rows.length?'<button class="btn" id="calcClear">Vaciar</button>':''}
+    </div>
+    <p class="sub">“Máximo posible” son las horas que esa persona podría llegar a cargar con lo que queda, en bloques de ${String(q).replace('.',',')} h. “Al máximo” se las pone.</p>
+  </section>`;
+}
+const fmtE2=n=>n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+
 /* ---------- render y eventos ---------- */
 function render(){
   const act=document.activeElement&&document.activeElement.id;
   const sc=document.getElementById('catsScroll'); const sl=sc?sc.scrollLeft:0;
   document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
-  document.getElementById('view').innerHTML=({res:viewRes,team:viewTeam,proj:viewProj,cfg:viewCfg,data:viewData})[tab]();
+  document.getElementById('view').innerHTML=({res:viewRes,team:viewTeam,proj:viewProj,calc:viewCalc,cfg:viewCfg,data:viewData})[tab]();
   const sc2=document.getElementById('catsScroll'); if(sc2)sc2.scrollLeft=sl;
   if(act){const el=document.getElementById(act); if(el){el.focus(); if(el.select&&el.classList.contains('cell'))el.select()}}
 }
@@ -602,6 +658,18 @@ view.addEventListener('click',e=>{
     const hdr=['Narrative','Job'].concat(work.map(i=>DOW[R.days[i].dow]+' '+R.days[i].d)).join('\t');
     copyText([hdr,...ids.map(id=>{const pr=projById(id);return pr.name+'\t'+pr.code+'\t'+line(id)})].join('\n'),'Hoja copiada');return;
   }
+  if(t.id==='calcAdd'){S.calc.rows.push({pid:document.getElementById('calcAddSel').value,h:0});save();render();return}
+  if(t.dataset.cdel){S.calc.rows.splice(+t.dataset.cdel,1);save();render();return}
+  if(t.id==='calcClear'){S.calc.rows=[];save();render();return}
+  if(t.dataset.cmax){
+    const {C,pr}=calcState(), q=+S.settings.step||0.5, k=+t.dataset.cmax;
+    const cost=C.rows.reduce((a,r)=>a+(+r.h||0)*rateOf(pr,S.people.find(p=>p.id===r.pid)),0);
+    const r=C.rows[k], rate=rateOf(pr,S.people.find(p=>p.id===r.pid));
+    r.h=Math.max((+r.h||0)+floorQ((poolOf(pr)-cost)/rate,q),0);save();render();return}
+  if(t.id==='calcLoad'){
+    const {C,pr}=calcState(), R=compute();
+    C.rows=R.people.filter(P=>(P.alloc[pr.id]||0)>0).map(P=>({pid:P.pe.id,h:P.alloc[pr.id]}));
+    save();render();toast(C.rows.length?'Horas traídas del reparto':'Nadie tiene horas en este proyecto este mes');return}
   if(t.id==='copyJson'){copyText(document.getElementById('json').value,'Configuración copiada');return}
   if(t.id==='loadJson'){
     try{const d=JSON.parse(document.getElementById('json').value);if(!Array.isArray(d.people)||!Array.isArray(d.projects))throw 0;S=d;if(!S.manual)S.manual={};save();toast('Configuración cargada');tab='res';render()}
@@ -625,6 +693,9 @@ view.addEventListener('change',e=>{
     m[id][i]=Math.round(v*100)/100;
     dirty();render();return;
   }
+  if(t.id==='calcProj'){S.calc.proj=t.value;S.calc.rows=[];save();render();return}
+  if(t.dataset.ch!==undefined){const k=+t.closest('tr').dataset.ci;S.calc.rows[k].h=Math.max(+String(t.value).replace(',','.')||0,0);save();render();return}
+  if(t.dataset.cpid!==undefined){const k=+t.closest('tr').dataset.ci;S.calc.rows[k].pid=t.value;save();render();return}
   if(t.id==='month'){if(t.value){S.month=t.value;save();render()}return}
   if(t.id==='personSel'){selPerson=t.value;render();return}
   const pr=t.closest('tr[data-pid]');
