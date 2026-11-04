@@ -124,6 +124,27 @@ th.vert{white-space:normal;min-width:84px;max-width:110px;text-transform:none;le
 .toast.on{opacity:1}
 .warnlist{margin:0;padding-left:18px;color:var(--warn);font-size:13px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.lbl{font-size:12px;color:var(--muted);font-weight:500}
+.f{display:flex;flex-direction:column;gap:4px}
+.pill{background:var(--surface-2);color:var(--muted)}
+code.job{display:block;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.mono{font-family:var(--f-mono)}
+.checks{display:flex;gap:6px;flex-wrap:wrap;align-self:flex-end}
+td.acts{display:flex;gap:2px}
+.btn.ghost.ok{color:var(--accent)}
+input.cell{width:48px;padding:4px 2px;text-align:center;font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:12.5px;border-color:transparent;background:transparent;border-radius:4px}
+input.cell:hover{border-color:var(--line-strong)}
+input.cell:focus{border-color:var(--accent);background:var(--surface)}
+table.cats td.bad,td.n.bad{background:var(--warn-soft)!important;color:var(--warn)}
+.legend i.badk{background:var(--warn-soft);border-color:var(--warn)}
+.note.alert{border-color:var(--warn);background:var(--warn-soft)}
+.note.alert b{color:var(--warn)}
+.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;max-width:80ch}
+.steps li .btn{margin-left:6px;padding:4px 10px}
+.steps li.done b{color:var(--ok)}
+.emptybox{border:1px dashed var(--line-strong);border-radius:6px;padding:20px;text-align:center;color:var(--muted)}
+.panel a{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -147,7 +168,7 @@ th.vert{white-space:normal;min-width:84px;max-width:110px;text-transform:none;le
 <div class="toast" id="toast" role="status"></div>
 
 <script>
-const STORE='reparto-cats-v1';
+const STORE='reparto-cats-v2';
 const TYPES={ext:'Externo',int:'Interno',promo:'Promoción'};
 const TYPE_ORDER={ext:0,int:1,promo:2};
 const DOW=['DO','LU','MA','MI','JU','VI','SA'];
@@ -156,33 +177,35 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const fmtH=n=>(Math.round(n*100)/100).toFixed(2);
 const fmtE=n=>isFinite(n)?Math.round(n).toLocaleString('es-ES')+' €':'Sin tope';
 const pad=n=>String(n).padStart(2,'0');
+const EPS=0.005;
 
-function example(){
-  const projects=[
-    {id:'adeslas',name:'ADESLAS',code:'0280SEG092SO',desc:'Seguridad operativa',type:'ext',cap:90000,woff:10,prev:0},
-    {id:'iberia',name:'IBERIA',code:'0280IBE054D0',desc:'IB - Task Force DI',type:'ext',cap:70000,woff:15,prev:0},
-    {id:'interno',name:'Iniciativa interna',code:'INT-EJEMPLO',desc:'Ejemplo: cambia código y tope',type:'int',cap:20000,woff:0,prev:0},
-    {id:'promo',name:'PROMO NURIA',code:'000280022CB9',desc:'Promoción Nuria',type:'promo',cap:null,woff:0,prev:0}
-  ];
-  const raw=[['Nuria','Socia',671],['Sergio','Senior Manager',395],['Jordi','Manager 1',336],['Marta','Manager 1',336],['Jose Antonio','Exp. Senior 1',241],['Camila','Exp. Senior 1',241],['Paula','Senior 1',187],['Alfonso','Senior 1',187],['Juan','Senior 1',187],['Bea Gonzalez','Senior 1',187],['Ana','Assistant 2',149],['Amaya','Assistant 2',149],['David','Assistant 2',149],['Nacho','Assistant 2',149],['Bea Casado','Assistant 2',149],['Bea García','Manager',358],['Adrian Ortega','Senior 1',187],['Victor Herrero','Assistant 1',126],['Alonso Vicente','Assistant 2',149],['Chen Xin','Assistant 2',149],['David García Arribas','Assistant 2',149],['Juan Checa','Assistant 1',126],['David García Rivera','Assistant 1',126],['Natalia Guillén','Assistant 1',126],['Lara','Assistant 1',126],['Alberto Caballero Ferrero','Assistant 1',126],['Javier Guerrero','Assistant 1',126],['Elsa Mbasogo','Assistant 1',126],['Carlos Ballesteros','Exp. Senior 1',241],['María Beltran','Exp. Senior 1',241],['Miguel Angel Martinez','Exp. Senior 2',252]];
-  const asg={adeslas:['Nuria','Sergio','Juan','Paula','Ana','Bea Gonzalez'],iberia:['Jordi','Juan','Alfonso','Amaya','David'],interno:['Camila','Jose Antonio','Nacho'],promo:['Juan']};
-  const people=raw.map(([name,cat,fee])=>({id:uid(),name,cat,fee,absences:'',projects:Object.keys(asg).filter(k=>asg[k].includes(name))}));
+function blank(){
+  const now=new Date();
   return {
-    month:'2026-11',
+    month:`${now.getFullYear()}-${pad(now.getMonth()+1)}`,
     settings:{hWeek:9,hFri:7,woffMode:'fee',order:'own',step:0.5,
       holidays:'2026-01-01, 2026-01-06, 2026-04-02, 2026-04-03, 2026-05-01, 2026-05-15, 2026-10-12, 2026-11-02, 2026-11-09, 2026-12-07, 2026-12-08, 2026-12-25'},
-    projects,people,example:true
+    projects:[],people:[],manual:{}
   };
 }
 let S;
 try{S=JSON.parse(localStorage.getItem(STORE))}catch(e){S=null}
-if(!S||!S.people)S=example();
+if(!S||!Array.isArray(S.people))S=blank();
+if(!S.manual)S.manual={};
 function save(){try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}}
 
 let tab='res', half='1', selPerson=null;
+const projById=id=>S.projects.find(p=>p.id===id);
 
-/* ---------- motor de reparto ---------- */
-function parseDates(str){return new Set(String(str||'').split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean))}
+/* ---------- fechas ---------- */
+function expandDates(str){
+  return String(str||'').split(/[\s,;]+/).filter(Boolean).flatMap(tok=>{
+    const m=tok.split(':'); if(m.length!==2)return [tok];
+    const a=new Date(m[0]+'T00:00'),b=new Date(m[1]+'T00:00'); if(isNaN(a)||isNaN(b))return [tok];
+    const out=[];for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1))out.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);return out;
+  });
+}
+const parseDates=s=>new Set(expandDates(s));
 function monthDays(){
   const [y,m]=S.month.split('-').map(Number);
   const n=new Date(y,m,0).getDate(); const hol=parseDates(S.settings.holidays); const out=[];
@@ -193,12 +216,18 @@ function monthDays(){
   }
   return out;
 }
+const halves=days=>({'1':days.map((x,i)=>i).filter(i=>days[i].d<=15),'2':days.map((x,i)=>i).filter(i=>days[i].d>=16)});
+function halfRange(days){const h=halves(days);return half==='m'?days.map((x,i)=>i):h[half]}
+function monthLabel(){const [y,m]=S.month.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('es-ES',{month:'long',year:'numeric'})}
+
+/* ---------- motor de reparto ---------- */
 function poolOf(p){
   if(p.cap===null||p.cap===''||p.cap===undefined||isNaN(+p.cap))return Infinity;
   const w=Math.min(Math.max(+p.woff||0,0),99)/100, cap=+p.cap;
   const pool=S.settings.woffMode==='fee'?cap/(1-w):cap*(1-w);
   return Math.max(pool-(+p.prev||0),0);
 }
+function manualOf(pid){return (S.manual[S.month]||{})[pid]}
 function compute(){
   const days=monthDays(), step=+S.settings.step||0.5;
   const projs=S.projects, pool={}, used={};
@@ -206,8 +235,21 @@ function compute(){
   const people=S.people.map(pe=>{
     const abs=parseDates(pe.absences);
     const cap=days.map(x=>abs.has(x.iso)?0:x.h);
-    return {pe,cap,R:cap.reduce((a,b)=>a+b,0),total:cap.reduce((a,b)=>a+b,0),alloc:{}};
+    const total=cap.reduce((a,b)=>a+b,0);
+    return {pe,cap,R:total,total,alloc:{},grid:{},manual:false};
   });
+  // 1) hojas editadas a mano: se respetan tal cual y consumen presupuesto primero
+  for(const P of people){
+    const man=manualOf(P.pe.id); if(!man)continue;
+    P.manual=true; P.R=0;
+    for(const id in man){
+      if(!projById(id))continue;
+      const row=days.map((x,i)=>+man[id][i]||0);
+      P.grid[id]=row; const h=row.reduce((a,b)=>a+b,0);
+      P.alloc[id]=h; used[id]+=h*(+P.pe.fee||0); pool[id]-=h*(+P.pe.fee||0);
+    }
+  }
+  // 2) reparto automático para el resto
   const tiers=S.settings.order==='own'
     ?[['own','ext'],['own','int'],['own','promo'],['other','ext'],['other','int'],['other','promo']]
     :[['own','ext'],['other','ext'],['own','int'],['other','int'],['own','promo'],['other','promo']];
@@ -216,16 +258,14 @@ function compute(){
     while(progress){
       progress=false;
       for(const P of people){
-        if(P.R<=1e-9)continue;
-        const fee=+P.pe.fee||0;
-        const give=Math.min(step,P.R);
-        let best=null,bestScore=-1;
+        if(P.manual||P.R<=1e-9)continue;
+        const fee=+P.pe.fee||0, give=Math.min(step,P.R);
+        let best=null,bestScore=-Infinity;
         for(const pr of projs){
           if(pr.type!==type)continue;
           const own=P.pe.projects.includes(pr.id);
           if((who==='own')!==own)continue;
           if(pool[pr.id]+1e-6<give*fee)continue;
-          // preferimos el proyecto con más presupuesto restante; a igualdad, donde menos horas lleva
           const score=(pool[pr.id]===Infinity?1e15:pool[pr.id])-(P.alloc[pr.id]||0)*1e-3;
           if(score>bestScore){bestScore=score;best=pr}
         }
@@ -236,13 +276,11 @@ function compute(){
       }
     }
   }
-  // repartir por días: rellenamos en orden externo → interno → promoción
+  // 3) reparto por días de las hojas automáticas: externo → interno → promoción
   for(const P of people){
-    const left=P.cap.slice(); P.grid={};
-    const ids=Object.keys(P.alloc).sort((a,b)=>{
-      const pa=projs.find(x=>x.id===a),pb=projs.find(x=>x.id===b);
-      return TYPE_ORDER[pa.type]-TYPE_ORDER[pb.type];
-    });
+    if(P.manual)continue;
+    const left=P.cap.slice();
+    const ids=Object.keys(P.alloc).sort((a,b)=>TYPE_ORDER[projById(a).type]-TYPE_ORDER[projById(b).type]);
     for(const id of ids){
       let rem=P.alloc[id]; const row=new Array(days.length).fill(0);
       for(let i=0;i<days.length&&rem>1e-9;i++){
@@ -252,56 +290,74 @@ function compute(){
       P.grid[id]=row;
     }
   }
+  // 4) control quincenal contra horas estándar
+  const H=halves(days);
+  for(const P of people){
+    P.check={};
+    for(const k of ['1','2']){
+      const std=H[k].reduce((a,i)=>a+P.cap[i],0);
+      const asg=H[k].reduce((a,i)=>a+Object.values(P.grid).reduce((b,row)=>b+row[i],0),0);
+      const badDays=H[k].filter(i=>Math.abs(Object.values(P.grid).reduce((b,row)=>b+row[i],0)-P.cap[i])>EPS).length;
+      P.check[k]={std,asg,diff:asg-std,badDays};
+    }
+  }
   return {days,people,pool,used};
 }
 
-/* ---------- vistas ---------- */
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1800)}
+/* ---------- utilidades de interfaz ---------- */
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1900)}
 function copyText(txt,ok){
-  const done=()=>toast(ok);
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(txt).then(done,()=>fallback());
-  }else fallback();
-  function fallback(){
-    const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
-    try{document.execCommand('copy');done()}catch(e){toast('No se pudo copiar: selecciona y copia a mano')}
-    ta.remove();
-  }
+  const fallback=()=>{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');toast(ok)}catch(e){toast('No se pudo copiar: selecciona y copia a mano')}ta.remove()};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(()=>toast(ok),fallback);else fallback();
 }
-function halfRange(days){
-  if(half==='1')return days.map((x,i)=>i).filter(i=>days[i].d<=15);
-  if(half==='2')return days.map((x,i)=>i).filter(i=>days[i].d>=16);
-  return days.map((x,i)=>i);
+function checkPill(c,label){
+  if(c.std===0&&c.asg===0)return `<span class="pill">${label}: sin horas</span>`;
+  if(Math.abs(c.diff)<=EPS)return `<span class="pill ok">${label}: ${fmtH(c.asg)} / ${fmtH(c.std)} h</span>`;
+  return c.diff>0
+    ?`<span class="pill warn">${label}: te pasas ${fmtH(c.diff)} h</span>`
+    :`<span class="pill warn">${label}: te faltan ${fmtH(-c.diff)} h</span>`;
 }
-function monthLabel(){
-  const [y,m]=S.month.split('-').map(Number);
-  return new Date(y,m-1,1).toLocaleDateString('es-ES',{month:'long',year:'numeric'});
-}
-const projById=id=>S.projects.find(p=>p.id===id);
+const isOk=P=>['1','2'].every(k=>Math.abs(P.check[k].diff)<=EPS&&P.check[k].badDays===0);
 
+function emptyState(){
+  const np=S.projects.length, nt=S.people.length;
+  return `<section class="panel empty">
+    <h2>Todavía no hay nada que repartir</h2>
+    <p class="sub">Para generar las hojas del CATS necesito los proyectos con su tope y el equipo con su fee.</p>
+    <ol class="steps">
+      <li class="${np?'done':''}"><b>Proyectos</b>: narrative, código de job, tipo, tope mensual y WOFF. ${np?`${np} añadido${np>1?'s':''}.`:''} <button class="btn" data-goto="proj">Ir a Proyectos</button></li>
+      <li class="${nt?'done':''}"><b>Equipo</b>: nombre, categoría, fee y en qué proyectos está cada uno. ${nt?`${nt} persona${nt>1?'s':''}.`:''} <button class="btn" data-goto="team">Ir a Equipo</button></li>
+      <li><b>Calendario</b>: revisa festivos y horas por día (ya vienen los de Madrid 2026). <button class="btn" data-goto="cfg">Revisar</button></li>
+    </ol>
+    <p class="sub">Si alguien te pasa su configuración, pégala en <a href="#" data-goto="data">Guardar / cargar</a>.</p>
+  </section>`;
+}
+
+/* ---------- vista Reparto ---------- */
 function viewRes(){
+  if(!S.people.length||!S.projects.length)return emptyState();
   const R=compute(); const idx=halfRange(R.days);
-  const sum=(arr)=>idx.reduce((a,i)=>a+(arr[i]||0),0);
-  let tot=0,ext=0,unassigned=0;
+  const sum=arr=>idx.reduce((a,i)=>a+(arr[i]||0),0);
+  let tot=0,ext=0;
   const rows=R.people.map(P=>{
     const t={ext:0,int:0,promo:0};
-    for(const id in P.grid){const pr=projById(id);t[pr.type]+=sum(P.grid[id])}
-    const cap=sum(P.cap), asg=t.ext+t.int+t.promo, un=cap-asg;
-    tot+=asg;ext+=t.ext;unassigned+=un;
-    return {P,t,cap,asg,un};
+    for(const id in P.grid){const pr=projById(id);if(pr)t[pr.type]+=sum(P.grid[id])}
+    tot+=t.ext+t.int+t.promo; ext+=t.ext;
+    return {P,t,cap:sum(P.cap)};
   });
-  if(!selPerson||!S.people.find(p=>p.id===selPerson)){const j=S.people.find(p=>p.name==='Juan')||S.people[0];selPerson=j&&j.id}
-  const exhausted=S.projects.filter(p=>isFinite(R.pool[p.id])&&poolOf(p)>0&&R.pool[p.id]<poolOf(p)*0.02);
-  const sel=rows.find(r=>r.P.pe.id===selPerson);
+  if(!selPerson||!S.people.find(p=>p.id===selPerson))selPerson=S.people[0].id;
+  const sel=R.people.find(P=>P.pe.id===selPerson);
+  const wrong=R.people.filter(P=>!isOk(P));
+  const over=S.projects.filter(p=>R.pool[p.id]<-1);
   const noPromo=!S.projects.some(p=>p.type==='promo'&&!isFinite(poolOf(p)));
 
   return `
-  ${S.example?`<div class="note"><b>Datos de ejemplo.</b> Los nombres y fees salen de tu Excel (FY27), pero los topes, WOFF y quién está en cada proyecto son inventados. Cámbialos en <b>Proyectos</b> y <b>Equipo</b>; se guardan en este navegador.</div>`:''}
   <section class="panel">
     <div class="row">
       <label class="f">Mes<input type="month" id="month" value="${esc(S.month)}"></label>
-      <div class="f" style="gap:4px"><span style="font-size:12px;color:var(--muted);font-weight:500">Periodo</span>
-        <div class="seg" role="group">
+      <div class="f"><span class="lbl">Periodo</span>
+        <div class="seg" role="group" aria-label="Periodo">
           <button data-half="1" aria-pressed="${half==='1'}">1–15</button>
           <button data-half="2" aria-pressed="${half==='2'}">16–${R.days.length}</button>
           <button data-half="m" aria-pressed="${half==='m'}">Mes entero</button>
@@ -310,31 +366,32 @@ function viewRes(){
       <span class="spacer"></span>
       <button class="btn" id="copyTeam">Copiar resumen del equipo</button>
     </div>
-    <p class="sub">El tope de cada proyecto es mensual, así que el reparto se calcula para el mes completo y aquí ves la quincena que toque cargar en ${esc(monthLabel())}.</p>
+    <p class="sub">El tope de los proyectos es mensual, así que se reparte el mes completo de ${esc(monthLabel())} y aquí ves el periodo elegido.</p>
   </section>
 
   <div class="stats">
     <div class="stat"><span class="k">Horas a cargar</span><span class="v">${fmtH(tot)}</span></div>
     <div class="stat"><span class="k">En externos</span><span class="v">${tot?Math.round(ext/tot*100):0}%</span></div>
-    <div class="stat"><span class="k">Sin asignar</span><span class="v ${unassigned>0.01?'warn':'ok'}">${fmtH(unassigned)}</span></div>
-    <div class="stat"><span class="k">Proyectos agotados</span><span class="v">${exhausted.length} / ${S.projects.filter(p=>isFinite(poolOf(p))).length}</span></div>
+    <div class="stat"><span class="k">Hojas que no cuadran</span><span class="v ${wrong.length?'warn':'ok'}">${wrong.length} / ${R.people.length}</span></div>
+    <div class="stat"><span class="k">Proyectos pasados de tope</span><span class="v ${over.length?'warn':'ok'}">${over.length}</span></div>
   </div>
-  ${unassigned>0.01?`<div class="note" style="border-color:var(--warn)"><b style="color:var(--warn)">Hay horas que no caben en ningún proyecto.</b> ${noPromo?'Añade un proyecto de promoción sin tope (deja el tope vacío) para que absorba lo que sobre.':'Revisa los topes o añade proyectos.'}</div>`:''}
+  ${wrong.length?`<div class="note alert"><b>${wrong.length===1?'Una hoja no cuadra':wrong.length+' hojas no cuadran'} con las horas estándar.</b> ${wrong.slice(0,6).map(P=>esc(P.pe.name)).join(', ')}${wrong.length>6?'…':''}. ${R.people.some(P=>!P.manual&&!isOk(P))&&noPromo?'Las automáticas no llegan porque se acaba el presupuesto: añade un proyecto de promoción sin tope para que absorba el resto.':'Revisa las marcadas en la tabla del equipo.'}</div>`:''}
+  ${over.length?`<div class="note alert"><b>Te pasas del tope en ${over.map(p=>esc(p.name)).join(', ')}.</b> Pasa porque hay hojas editadas a mano que cargan más de lo que queda; baja horas ahí o sube el tope.</div>`:''}
 
   <section class="panel">
-    <h2>Hoja de ${esc(sel?sel.P.pe.name:'—')}</h2>
-    ${sel?catsGrid(R,sel,idx):'<p class="sub">Añade personas en Equipo.</p>'}
+    <div class="row"><h2>Hoja de ${esc(sel.pe.name)}</h2>${sel.manual?'<span class="pill promo">Editada a mano</span>':'<span class="pill">Automática</span>'}</div>
+    ${catsGrid(R,sel,idx)}
   </section>
 
   <section class="panel">
     <h2>Equipo</h2>
-    <p class="sub">Pulsa una fila para ver su hoja.</p>
+    <p class="sub">Pulsa una fila para ver y editar su hoja.</p>
     <div class="scroll"><table>
-      <thead><tr><th>Persona</th><th>Categoría</th><th class="n">Disponibles</th><th class="n">Externo</th><th class="n">Interno</th><th class="n">Promoción</th><th>Estado</th></tr></thead>
-      <tbody>${rows.map(r=>`<tr class="click ${r.P.pe.id===selPerson?'sel':''}" data-person="${r.P.pe.id}">
-        <td>${esc(r.P.pe.name)}</td><td>${esc(r.P.pe.cat)}</td><td class="n">${fmtH(r.cap)}</td>
+      <thead><tr><th>Persona</th><th>Categoría</th><th class="n">Estándar</th><th class="n">Externo</th><th class="n">Interno</th><th class="n">Promoción</th><th>1ª quincena</th><th>2ª quincena</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr class="click ${r.P.pe.id===selPerson?'sel':''}" data-person="${r.P.pe.id}" tabindex="0">
+        <td>${esc(r.P.pe.name)}${r.P.manual?' <span class="pill promo">a mano</span>':''}</td><td>${esc(r.P.pe.cat)}</td><td class="n">${fmtH(r.cap)}</td>
         <td class="n">${fmtH(r.t.ext)}</td><td class="n">${fmtH(r.t.int)}</td><td class="n">${fmtH(r.t.promo)}</td>
-        <td>${r.un>0.01?`<span class="pill warn">Faltan ${fmtH(r.un)} h</span>`:`<span class="pill ok">Completo</span>`}</td></tr>`).join('')}</tbody>
+        <td>${checkPill(r.P.check['1'],'1ª')}</td><td>${checkPill(r.P.check['2'],'2ª')}</td></tr>`).join('')}</tbody>
     </table></div>
   </section>
 
@@ -344,67 +401,88 @@ function viewRes(){
       <thead><tr><th>Proyecto</th><th>Tipo</th><th class="n">Tope</th><th class="n">WOFF</th><th class="n">Disponible</th><th class="n">Usado</th><th class="n">Horas</th><th>Uso</th></tr></thead>
       <tbody>${S.projects.map(p=>{
         const pool=poolOf(p), u=R.used[p.id], hrs=R.people.reduce((a,P)=>a+(P.alloc[p.id]||0),0);
-        const pct=isFinite(pool)&&pool>0?Math.min(u/pool*100,100):0;
-        return `<tr><td><b>${esc(p.name)}</b><br><code style="font-family:var(--f-mono);font-size:11px;color:var(--muted)">${esc(p.code)}</code></td>
+        const pct=isFinite(pool)&&pool>0?Math.min(u/pool*100,100):(u>0?100:0);
+        const isOver=R.pool[p.id]<-1;
+        return `<tr><td><b>${esc(p.name)}</b><br><code class="job">${esc(p.code)}</code></td>
         <td><span class="pill ${p.type}">${TYPES[p.type]}</span></td>
-        <td class="n">${fmtE(isFinite(pool)?+p.cap:Infinity)}</td><td class="n">${isFinite(pool)?(+p.woff||0)+'%':'—'}</td>
+        <td class="n">${isFinite(pool)?fmtE(+p.cap):'Sin tope'}</td><td class="n">${isFinite(pool)?(+p.woff||0)+'%':'—'}</td>
         <td class="n">${fmtE(pool)}</td><td class="n">${Math.round(u).toLocaleString('es-ES')} €</td><td class="n">${fmtH(hrs)}</td>
-        <td>${isFinite(pool)?`<div class="bar"><i class="${pct>98?'full':''}" style="width:${pct}%"></i></div>`:'<span class="pill promo">Absorbe el resto</span>'}</td></tr>`}).join('')}</tbody>
+        <td>${isFinite(pool)?`<div class="row" style="gap:6px;flex-wrap:nowrap"><div class="bar"><i class="${pct>98?'full':''}" style="width:${pct}%"></i></div>${isOver?`<span class="pill warn">+${fmtE(-R.pool[p.id])}</span>`:''}</div>`:'<span class="pill promo">Absorbe el resto</span>'}</td></tr>`}).join('')}</tbody>
     </table></div>
   </section>`;
 }
 
-function catsGrid(R,sel,idx){
-  const P=sel.P, ids=Object.keys(P.grid).sort((a,b)=>TYPE_ORDER[projById(a).type]-TYPE_ORDER[projById(b).type]);
+function catsGrid(R,P,idx){
+  const ids=Object.keys(P.grid).filter(id=>projById(id))
+    .filter(id=>P.manual||idx.some(i=>P.grid[id][i]>0))
+    .sort((a,b)=>TYPE_ORDER[projById(a).type]-TYPE_ORDER[projById(b).type]);
   const cls=i=>R.days[i].we?'we':(R.days[i].ho?'ho':'');
+  const dayTot=i=>ids.reduce((a,id)=>a+P.grid[id][i],0);
   const head=idx.map(i=>`<th class="d ${cls(i)}">${DOW[R.days[i].dow]}<small>${R.days[i].d}</small></th>`).join('');
   const body=ids.map(id=>{
     const pr=projById(id), row=P.grid[id], t=idx.reduce((a,i)=>a+row[i],0);
-    if(t<=0)return '';
-    return `<tr><td class="proj"><b>${esc(pr.name)}</b><code>${esc(pr.code)}</code> <span class="pill ${pr.type}">${TYPES[pr.type]}</span></td>
-      ${idx.map(i=>`<td class="d ${cls(i)}">${row[i]?fmtH(row[i]):''}</td>`).join('')}<td class="n"><b>${fmtH(t)}</b></td>
-      <td><button class="btn ghost" style="color:var(--accent)" data-copyrow="${id}">Copiar</button></td></tr>`;
+    return `<tr><td class="proj"><b>${esc(pr.name)}</b><code class="job">${esc(pr.code)}</code> <span class="pill ${pr.type}">${TYPES[pr.type]}</span></td>
+      ${idx.map(i=>{const off=R.days[i].we||R.days[i].ho;
+        return `<td class="d ${cls(i)}">${off&&!row[i]?'':`<input class="cell" type="text" inputmode="decimal" id="c-${P.pe.id}-${id}-${i}" data-cell="${id}" data-day="${i}" value="${row[i]?fmtH(row[i]):''}" aria-label="${esc(pr.name)} día ${R.days[i].d}">`}</td>`}).join('')}
+      <td class="n"><b>${fmtH(t)}</b></td>
+      <td class="acts"><button class="btn ghost ok" data-copyrow="${id}">Copiar</button>${P.manual?`<button class="btn ghost" data-delrow="${id}" aria-label="Quitar fila ${esc(pr.name)}">Quitar</button>`:''}</td></tr>`;
   }).join('');
-  const totRow=idx.map(i=>{const s=ids.reduce((a,id)=>a+P.grid[id][i],0);return `<td class="d ${cls(i)}">${s?fmtH(s):''}</td>`}).join('');
+  const totRow=idx.map(i=>{const s=dayTot(i),bad=Math.abs(s-P.cap[i])>EPS;
+    return `<td class="d ${cls(i)} ${bad?'bad':''}" ${bad?`title="${s>P.cap[i]?'Te pasas':'Te faltan'} ${fmtH(Math.abs(s-P.cap[i]))} h"`:''}>${s?fmtH(s):''}</td>`}).join('');
   const stdRow=idx.map(i=>`<td class="d ${cls(i)}">${fmtH(P.cap[i])}</td>`).join('');
-  const tAll=idx.reduce((a,i)=>a+ids.reduce((b,id)=>b+P.grid[id][i],0),0), tStd=idx.reduce((a,i)=>a+P.cap[i],0);
-  return `<div class="row"><label class="f">Persona<select id="personSel">${S.people.map(p=>`<option value="${p.id}" ${p.id===selPerson?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>
-    <span class="spacer"></span><button class="btn primary" id="copyPerson">Copiar hoja completa</button></div>
-  <div class="scroll"><table class="cats">
-    <thead><tr><th class="proj">Narrative / Job</th>${head}<th class="n">Total</th><th></th></tr></thead>
-    <tbody>${body||`<tr><td class="proj" colspan="${idx.length+3}">Sin horas en este periodo.</td></tr>`}</tbody>
-    <tfoot><tr><td class="proj">Total</td>${totRow}<td class="n">${fmtH(tAll)}</td><td></td></tr>
-    <tr><td class="proj">Horas estándar</td>${stdRow}<td class="n">${fmtH(tStd)}</td><td></td></tr></tfoot>
-  </table></div>
-  <div class="legend"><span><i style="background:var(--weekend)"></i>Fin de semana</span><span><i style="background:var(--hol)"></i>Festivo</span><span>“Copiar” deja las horas de la fila separadas por tabuladores, en el mismo orden de días que el CATS.</span></div>`;
+  const tAll=idx.reduce((a,i)=>a+dayTot(i),0), tStd=idx.reduce((a,i)=>a+P.cap[i],0);
+  const free=S.projects.filter(p=>!ids.includes(p.id));
+  const halvesShown=half==='m'?['1','2']:[half];
+  return `<div class="row">
+      <label class="f">Persona<select id="personSel">${S.people.map(p=>`<option value="${p.id}" ${p.id===selPerson?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>
+      <div class="checks">${halvesShown.map(k=>checkPill(P.check[k],k==='1'?'1ª quincena':'2ª quincena')).join(' ')}</div>
+      <span class="spacer"></span>
+      ${P.manual?'<button class="btn" id="resetManual">Volver al reparto automático</button>':''}
+      <button class="btn primary" id="copyPerson">Copiar hoja</button>
+    </div>
+    <div class="scroll" id="catsScroll"><table class="cats">
+      <thead><tr><th class="proj">Narrative / Job</th>${head}<th class="n">Total</th><th></th></tr></thead>
+      <tbody>${body||`<tr><td class="proj" colspan="${idx.length+3}">Sin horas en este periodo.</td></tr>`}</tbody>
+      <tfoot><tr><td class="proj">Total</td>${totRow}<td class="n ${Math.abs(tAll-tStd)>EPS?'bad':''}">${fmtH(tAll)}</td><td></td></tr>
+      <tr><td class="proj">Horas estándar</td>${stdRow}<td class="n">${fmtH(tStd)}</td><td></td></tr></tfoot>
+    </table></div>
+    <div class="row">
+      ${free.length?`<label class="f">Añadir proyecto a la hoja<select id="addRowSel">${free.map(p=>`<option value="${p.id}">${esc(p.name)} · ${TYPES[p.type]}</option>`).join('')}</select></label><button class="btn" id="addRow" style="align-self:flex-end">Añadir fila</button>`:''}
+      <span class="spacer"></span>
+      <div class="legend"><span><i style="background:var(--weekend)"></i>Fin de semana</span><span><i style="background:var(--hol)"></i>Festivo</span><span><i class="badk"></i>El día no suma sus horas estándar</span></div>
+    </div>
+    <p class="sub">Escribe en cualquier casilla para ajustar la hoja; al editarla deja de recalcularse sola y su gasto se descuenta primero del tope del proyecto. “Copiar” deja las horas de los días laborables separadas por tabuladores.</p>`;
 }
 
+/* ---------- vistas de edición ---------- */
 function viewTeam(){
   const pj=S.projects;
   return `<section class="panel">
     <div class="row"><h2>Equipo</h2><span class="spacer"></span><button class="btn primary" id="addPerson">Añadir persona</button></div>
-    <p class="sub">Marca los proyectos de cada persona: ahí van sus horas primero. Ausencias: fechas sueltas (AAAA-MM-DD) separadas por comas o rangos con dos puntos, p. ej. 2026-11-23:2026-11-27.</p>
-    <div class="scroll"><table class="edit">
+    <p class="sub">Marca los proyectos de cada persona: ahí van sus horas primero. Ausencias: fechas AAAA-MM-DD separadas por comas, o rangos con dos puntos (2026-11-23:2026-11-27).</p>
+    ${S.people.length?`<div class="scroll"><table class="edit">
       <thead><tr><th>Nombre</th><th>Categoría</th><th class="n">Fee €/h</th>${pj.map(p=>`<th class="vert">${esc(p.name)}<br><span class="pill ${p.type}">${TYPES[p.type]}</span></th>`).join('')}<th>Ausencias</th><th></th></tr></thead>
       <tbody>${S.people.map(pe=>`<tr data-pid="${pe.id}">
-        <td><input type="text" id="pn-${pe.id}" data-f="name" value="${esc(pe.name)}"></td>
-        <td><input type="text" id="pc-${pe.id}" data-f="cat" value="${esc(pe.cat)}" style="min-width:110px"></td>
+        <td><input type="text" id="pn-${pe.id}" data-f="name" value="${esc(pe.name)}" placeholder="Nombre"></td>
+        <td><input type="text" id="pc-${pe.id}" data-f="cat" value="${esc(pe.cat)}" placeholder="Categoría" style="min-width:110px"></td>
         <td><input type="number" id="pf-${pe.id}" data-f="fee" min="0" step="1" value="${esc(pe.fee)}"></td>
         ${pj.map(p=>`<td class="chk"><input type="checkbox" id="pa-${pe.id}-${p.id}" data-asg="${p.id}" ${pe.projects.includes(p.id)?'checked':''} aria-label="${esc(pe.name)} en ${esc(p.name)}"></td>`).join('')}
         <td><input type="text" id="pab-${pe.id}" data-f="absences" value="${esc(pe.absences)}" placeholder="—" style="min-width:180px"></td>
         <td><button class="btn ghost" data-delperson="${pe.id}" aria-label="Quitar ${esc(pe.name)}">Quitar</button></td></tr>`).join('')}</tbody>
-    </table></div></section>`;
+    </table></div>`:`<div class="emptybox">Aún no hay nadie. Pulsa <b>Añadir persona</b> para empezar.</div>`}
+    ${S.people.length&&!pj.length?'<p class="sub">Cuando añadas proyectos aparecerán aquí como columnas para marcar quién está en cada uno.</p>':''}
+  </section>`;
 }
 
 function viewProj(){
   return `<section class="panel">
     <div class="row"><h2>Proyectos</h2><span class="spacer"></span><button class="btn primary" id="addProj">Añadir proyecto</button></div>
     <p class="sub">Tope mensual en euros y WOFF en %. Deja el tope vacío en el proyecto de promoción para que absorba las horas que sobren. “Ya consumido” resta lo que se haya cargado este mes fuera de esta herramienta.</p>
-    <div class="scroll"><table class="edit">
+    ${S.projects.length?`<div class="scroll"><table class="edit">
       <thead><tr><th>Narrative</th><th>Código job</th><th>Descripción</th><th>Tipo</th><th class="n">Tope mes €</th><th class="n">WOFF %</th><th class="n">Ya consumido €</th><th class="n">Disponible</th><th></th></tr></thead>
       <tbody>${S.projects.map(p=>`<tr data-prid="${p.id}">
-        <td><input type="text" id="jn-${p.id}" data-f="name" value="${esc(p.name)}"></td>
-        <td><input type="text" id="jc-${p.id}" data-f="code" value="${esc(p.code)}" style="font-family:var(--f-mono)"></td>
+        <td><input type="text" id="jn-${p.id}" data-f="name" value="${esc(p.name)}" placeholder="Narrative"></td>
+        <td><input type="text" id="jc-${p.id}" data-f="code" value="${esc(p.code)}" placeholder="Código" class="mono"></td>
         <td><input type="text" id="jd-${p.id}" data-f="desc" value="${esc(p.desc)}"></td>
         <td><select id="jt-${p.id}" data-f="type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${p.type===k?'selected':''}>${v}</option>`).join('')}</select></td>
         <td><input type="number" id="jcap-${p.id}" data-f="cap" min="0" step="100" value="${p.cap===null?'':esc(p.cap)}" placeholder="Sin tope"></td>
@@ -412,11 +490,11 @@ function viewProj(){
         <td><input type="number" id="jp-${p.id}" data-f="prev" min="0" step="100" value="${esc(p.prev)}"></td>
         <td class="n">${fmtE(poolOf(p))}</td>
         <td><button class="btn ghost" data-delproj="${p.id}" aria-label="Quitar ${esc(p.name)}">Quitar</button></td></tr>`).join('')}</tbody>
-    </table></div>
+    </table></div>`:`<div class="emptybox">Aún no hay proyectos. Pulsa <b>Añadir proyecto</b> y rellena narrative, código, tipo, tope y WOFF.</div>`}
     <div class="note"><b>Cómo se calcula el disponible.</b> ${S.settings.woffMode==='fee'
       ?'El WOFF es un descuento sobre la tarifa: cada hora cuesta fee × (1 − WOFF), así que el tope cubre tope ÷ (1 − WOFF) en valor a fee estándar. Con 10.000 € y 20 % de WOFF caben 12.500 € de horas a fee.'
       :'El WOFF se descuenta del tope: disponible = tope × (1 − WOFF). Con 10.000 € y 20 % de WOFF caben 8.000 € de horas a fee.'}
-      Las horas de una persona en el proyecto son ese importe ÷ su fee, y el disponible se comparte entre todos los que cargan allí. Puedes cambiar el criterio en Calendario y reglas.</div>
+      Las horas de una persona son ese importe ÷ su fee, y el disponible se comparte entre todos los que cargan en el proyecto. El criterio se cambia en Calendario y reglas.</div>
   </section>`;
 }
 
@@ -432,7 +510,7 @@ function viewCfg(){
   </section>
   <section class="panel">
     <h2>Festivos</h2>
-    <p class="sub">Fechas AAAA-MM-DD separadas por comas. Vienen cargados los de 2026 en Madrid capital (nacionales, autonómicos y locales: 2 y 9 de noviembre, 7 y 8 de diciembre). Revísalos si alguien trabaja en otra ciudad.</p>
+    <p class="sub">Fechas AAAA-MM-DD separadas por comas. Vienen cargados los de 2026 en Madrid capital (nacionales, autonómicos y locales). Revísalos si alguien trabaja en otra ciudad.</p>
     <textarea id="holidays" style="min-height:80px">${esc(s.holidays)}</textarea>
   </section>
   <section class="panel">
@@ -441,83 +519,103 @@ function viewCfg(){
       <select id="woffMode"><option value="fee" ${s.woffMode==='fee'?'selected':''}>Descuento sobre la tarifa: tope ÷ (1 − WOFF)</option><option value="cap" ${s.woffMode==='cap'?'selected':''}>Descuento sobre el tope: tope × (1 − WOFF)</option></select></label>
     <label class="f">Orden de prioridad
       <select id="order"><option value="own" ${s.order==='own'?'selected':''}>Primero tus proyectos (ext → int → promo), luego los de otros</option><option value="type" ${s.order==='type'?'selected':''}>Primero externos (tuyos y luego de otros), luego internos, luego promoción</option></select></label>
-    <div class="note">Dentro de cada paso, el reparto va por turnos de medio bloque entre las personas que pueden cargar, para que nadie se coma solo el presupuesto de un proyecto compartido. Si una persona tiene varios proyectos del mismo tipo, tira del que tenga más presupuesto libre.</div>
+    <div class="note">Las hojas editadas a mano se respetan y gastan presupuesto primero. El resto se reparte por turnos entre las personas que pueden cargar, para que nadie agote solo un proyecto compartido.</div>
   </section>`;
 }
 
 function viewData(){
   return `<section class="panel">
     <h2>Guardar / cargar</h2>
-    <p class="sub">Los cambios se guardan solos en este navegador. Para pasarle la configuración a otra persona o a otro ordenador, copia este texto y pégalo allí en el mismo cuadro.</p>
-    <textarea id="json">${esc(JSON.stringify({...S,example:undefined},null,1))}</textarea>
+    <p class="sub">Los cambios se guardan solos en este navegador. Para pasar la configuración a otra persona u otro ordenador, copia este texto y pégalo allí en este mismo cuadro.</p>
+    <textarea id="json">${esc(JSON.stringify(S,null,1))}</textarea>
     <div class="row">
       <button class="btn" id="copyJson">Copiar configuración</button>
       <button class="btn primary" id="loadJson">Cargar lo pegado</button>
       <span class="spacer"></span>
-      <button class="btn" id="resetBtn">Volver a los datos de ejemplo</button>
+      <button class="btn" id="resetBtn">Borrar todo</button>
     </div>
     <p class="sub" id="resetMsg" hidden></p>
   </section>`;
 }
 
 /* ---------- render y eventos ---------- */
-function expandAbsences(str){
-  // admite rangos AAAA-MM-DD:AAAA-MM-DD
-  return String(str||'').split(/[\s,;]+/).filter(Boolean).flatMap(tok=>{
-    const m=tok.split(':'); if(m.length!==2)return [tok];
-    const a=new Date(m[0]+'T00:00'),b=new Date(m[1]+'T00:00'); if(isNaN(a)||isNaN(b))return [tok];
-    const out=[];for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1))out.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);return out;
-  }).join(',');
-}
-const _parse=parseDates; parseDates=s=>_parse(expandAbsences(s));
-
 function render(){
+  const act=document.activeElement&&document.activeElement.id;
+  const sc=document.getElementById('catsScroll'); const sl=sc?sc.scrollLeft:0;
   document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
-  const v=document.getElementById('view');
-  v.innerHTML=({res:viewRes,team:viewTeam,proj:viewProj,cfg:viewCfg,data:viewData})[tab]();
+  document.getElementById('view').innerHTML=({res:viewRes,team:viewTeam,proj:viewProj,cfg:viewCfg,data:viewData})[tab]();
+  const sc2=document.getElementById('catsScroll'); if(sc2)sc2.scrollLeft=sl;
+  if(act){const el=document.getElementById(act); if(el){el.focus(); if(el.select&&el.classList.contains('cell'))el.select()}}
 }
-function dirty(){S.example=S.example&&false;save()}
+function dirty(){save()}
+function ensureManual(){
+  // convierte la hoja actual en manual partiendo de lo calculado
+  if(manualOf(selPerson))return manualOf(selPerson);
+  const R=compute(), P=R.people.find(x=>x.pe.id===selPerson);
+  const snap={}; for(const id in P.grid)snap[id]=P.grid[id].slice();
+  (S.manual[S.month]=S.manual[S.month]||{})[selPerson]=snap;
+  return snap;
+}
 
 document.querySelector('nav.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tab=b.dataset.tab;render()});
 const view=document.getElementById('view');
 
+view.addEventListener('keydown',e=>{
+  const tr=e.target.closest('tr[data-person]');
+  if(tr&&e.target===tr&&(e.key==='Enter'||e.key===' ')){e.preventDefault();selPerson=tr.dataset.person;render()}
+  if(e.target.classList.contains('cell')&&e.key==='Enter'){e.preventDefault();e.target.blur()}
+});
+
 view.addEventListener('click',e=>{
   const t=e.target;
+  const go=t.closest('[data-goto]'); if(go){e.preventDefault();tab=go.dataset.goto;render();return}
   const hb=t.closest('[data-half]'); if(hb){half=hb.dataset.half;render();return}
   const tr=t.closest('tr[data-person]'); if(tr){selPerson=tr.dataset.person;render();document.querySelector('.cats')?.scrollIntoView({behavior:'smooth',block:'center'});return}
-  if(t.id==='addPerson'){S.people.push({id:uid(),name:'Nueva persona',cat:'Assistant 1',fee:126,absences:'',projects:[]});dirty();render();return}
+  if(t.id==='addPerson'){const id=uid();S.people.push({id,name:'',cat:'',fee:0,absences:'',projects:[]});dirty();render();document.getElementById('pn-'+id)?.focus();return}
   if(t.dataset.delperson){S.people=S.people.filter(p=>p.id!==t.dataset.delperson);dirty();render();toast('Persona quitada');return}
-  if(t.id==='addProj'){S.projects.push({id:uid(),name:'NUEVO PROYECTO',code:'',desc:'',type:'ext',cap:0,woff:0,prev:0});dirty();render();return}
+  if(t.id==='addProj'){const id=uid();S.projects.push({id,name:'',code:'',desc:'',type:'ext',cap:0,woff:0,prev:0});dirty();render();document.getElementById('jn-'+id)?.focus();return}
   if(t.dataset.delproj){const id=t.dataset.delproj;S.projects=S.projects.filter(p=>p.id!==id);S.people.forEach(p=>p.projects=p.projects.filter(x=>x!==id));dirty();render();toast('Proyecto quitado');return}
+  if(t.id==='resetManual'){delete (S.manual[S.month]||{})[selPerson];dirty();render();toast('Hoja recalculada automáticamente');return}
+  if(t.id==='addRow'){const id=document.getElementById('addRowSel').value;const m=ensureManual();const n=monthDays().length;if(!m[id])m[id]=new Array(n).fill(0);dirty();render();return}
+  if(t.dataset.delrow){const m=ensureManual();delete m[t.dataset.delrow];dirty();render();return}
   if(t.dataset.copyrow||t.id==='copyPerson'||t.id==='copyTeam'){
     const R=compute(), idx=halfRange(R.days);
-    const P=R.people.find(x=>x.pe.id===selPerson);
-    const line=(id)=>idx.filter(i=>!R.days[i].we).map(i=>P.grid[id][i]?String(P.grid[id][i]).replace('.',','):'').join('\t');
-    if(t.dataset.copyrow){copyText(line(t.dataset.copyrow),'Fila copiada (solo días laborables)');return}
-    if(t.id==='copyPerson'){
-      const ids=Object.keys(P.grid).filter(id=>idx.some(i=>P.grid[id][i]>0));
-      const hdr=['Narrative','Job'].concat(idx.filter(i=>!R.days[i].we).map(i=>DOW[R.days[i].dow]+' '+R.days[i].d)).join('\t');
-      copyText([hdr,...ids.map(id=>{const pr=projById(id);return pr.name+'\t'+pr.code+'\t'+line(id)})].join('\n'),'Hoja copiada');return
+    if(t.id==='copyTeam'){
+      const lines=['Persona\tNarrative\tJob\tHoras'];
+      R.people.forEach(Q=>{for(const id in Q.grid){const pr=projById(id);if(!pr)continue;const h=idx.reduce((a,i)=>a+Q.grid[id][i],0);if(h>0)lines.push([Q.pe.name,pr.name,pr.code,String(h).replace('.',',')].join('\t'))}});
+      copyText(lines.join('\n'),'Resumen copiado: pégalo en Excel');return;
     }
-    const lines=['Persona\tNarrative\tJob\tHoras'];
-    R.people.forEach(Q=>{for(const id in Q.grid){const h=idx.reduce((a,i)=>a+Q.grid[id][i],0);if(h>0){const pr=projById(id);lines.push([Q.pe.name,pr.name,pr.code,String(h).replace('.',',')].join('\t'))}}});
-    copyText(lines.join('\n'),'Resumen copiado: pégalo en Excel');return;
+    const P=R.people.find(x=>x.pe.id===selPerson);
+    const work=idx.filter(i=>!R.days[i].we);
+    const line=id=>work.map(i=>P.grid[id][i]?String(P.grid[id][i]).replace('.',','):'').join('\t');
+    if(t.dataset.copyrow){copyText(line(t.dataset.copyrow),'Fila copiada (días laborables)');return}
+    const ids=Object.keys(P.grid).filter(id=>projById(id)&&idx.some(i=>P.grid[id][i]>0));
+    const hdr=['Narrative','Job'].concat(work.map(i=>DOW[R.days[i].dow]+' '+R.days[i].d)).join('\t');
+    copyText([hdr,...ids.map(id=>{const pr=projById(id);return pr.name+'\t'+pr.code+'\t'+line(id)})].join('\n'),'Hoja copiada');return;
   }
   if(t.id==='copyJson'){copyText(document.getElementById('json').value,'Configuración copiada');return}
   if(t.id==='loadJson'){
-    try{const d=JSON.parse(document.getElementById('json').value);if(!Array.isArray(d.people)||!Array.isArray(d.projects))throw 0;S=d;S.example=false;save();toast('Configuración cargada');tab='res';render()}
+    try{const d=JSON.parse(document.getElementById('json').value);if(!Array.isArray(d.people)||!Array.isArray(d.projects))throw 0;S=d;if(!S.manual)S.manual={};save();toast('Configuración cargada');tab='res';render()}
     catch(err){toast('El texto no es una configuración válida')}
     return;
   }
   if(t.id==='resetBtn'){
     const m=document.getElementById('resetMsg');
-    if(t.dataset.armed){S=example();save();tab='res';render();toast('Datos de ejemplo restaurados');return}
-    t.dataset.armed='1';t.textContent='Pulsa otra vez para confirmar';m.hidden=false;m.textContent='Se borrarán tus personas y proyectos de este navegador.';return;
+    if(t.dataset.armed){S=blank();save();tab='res';render();toast('Todo borrado');return}
+    t.dataset.armed='1';t.textContent='Pulsa otra vez para borrar';m.hidden=false;m.textContent='Se borrarán personas, proyectos y hojas editadas de este navegador.';return;
   }
 });
 
 view.addEventListener('change',e=>{
   const t=e.target;
+  if(t.classList.contains('cell')){
+    const raw=t.value.trim().replace(',','.'), v=raw===''?0:Number(raw);
+    if(!isFinite(v)||v<0||v>24){toast('Escribe un número de horas entre 0 y 24');t.value='';return}
+    const m=ensureManual(), id=t.dataset.cell, i=+t.dataset.day;
+    if(!m[id])m[id]=new Array(monthDays().length).fill(0);
+    m[id][i]=Math.round(v*100)/100;
+    dirty();render();return;
+  }
   if(t.id==='month'){if(t.value){S.month=t.value;save();render()}return}
   if(t.id==='personSel'){selPerson=t.value;render();return}
   const pr=t.closest('tr[data-pid]');
