@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reparto CATS</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: hoja de trabajo tipo libro de horas — banda superior, pestañas, paneles apilados; cifras siempre en mono tabular */
+:root{
+  --bg:#f2f4f3; --surface:#ffffff; --surface-2:#f7f9f8; --ink:#16201c; --muted:#5a6964; --line:#d7dfdb; --line-strong:#b9c5c0;
+  --accent:#0c6a56; --accent-ink:#ffffff; --accent-soft:#d9eee7;
+  --ext:#2356b5; --ext-soft:#e2eafa; --int:#9a5d07; --int-soft:#faeed7; --promo:#6a58a8; --promo-soft:#ebe7f7;
+  --weekend:#e9edeb; --hol:#f8dfd9; --hol-ink:#a0391f; --warn:#b3361e; --warn-soft:#fbe6e1; --ok:#1d7a49;
+  --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --f-body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111715; --surface:#18201d; --surface-2:#1d2622; --ink:#e4ebe8; --muted:#97a6a0; --line:#2b3632; --line-strong:#3d4a45;
+  --accent:#4fc2a4; --accent-ink:#0b1714; --accent-soft:#183a31;
+  --ext:#8fb2f5; --ext-soft:#1c2a44; --int:#e3ad59; --int-soft:#3a2c14; --promo:#b8a8ee; --promo-soft:#2a2540;
+  --weekend:#202a26; --hol:#3d2420; --hol-ink:#f2a08b; --warn:#f08a70; --warn-soft:#3b221c; --ok:#6fd39d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111715; --surface:#18201d; --surface-2:#1d2622; --ink:#e4ebe8; --muted:#97a6a0; --line:#2b3632; --line-strong:#3d4a45;
+  --accent:#4fc2a4; --accent-ink:#0b1714; --accent-soft:#183a31;
+  --ext:#8fb2f5; --ext-soft:#1c2a44; --int:#e3ad59; --int-soft:#3a2c14; --promo:#b8a8ee; --promo-soft:#2a2540;
+  --weekend:#202a26; --hol:#3d2420; --hol-ink:#f2a08b; --warn:#f08a70; --warn-soft:#3b221c; --ok:#6fd39d; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .wrap{padding-block:18px 0;display:flex;flex-direction:column;gap:14px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:26px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.brand p{margin:0;color:var(--muted);max-width:62ch}
+nav.tabs{display:flex;gap:4px;overflow-x:auto}
+nav.tabs button{font:600 13px var(--f-body);background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:10px 12px;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs button:hover{color:var(--ink)}
+main .wrap{padding-block:20px 48px;display:flex;flex-direction:column;gap:18px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{font-family:var(--f-display);font-weight:600;font-size:17px;margin:0}
+.panel .sub{color:var(--muted);margin:0;font-size:13px;max-width:72ch}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spacer{flex:1}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:500}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;padding:6px 8px}
+input[type=number]{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+textarea{width:100%;min-height:140px;font-family:var(--f-mono);font-size:12px}
+.btn{font:600 13px var(--f-body);border-radius:6px;padding:7px 12px;cursor:pointer;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted);padding:4px 8px}
+.btn.ghost:hover{color:var(--warn)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden}
+.seg button{font:600 12px var(--f-body);border:0;background:var(--surface);color:var(--muted);padding:7px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.stat .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.stat .v{font-family:var(--f-mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums}
+.stat .v.warn{color:var(--warn)}
+.stat .v.ok{color:var(--ok)}
+@media (max-width:720px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.scroll{overflow-x:auto;min-width:0;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
+td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tbody tr:last-child td{border-bottom:0}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--surface-2)}
+tr.sel td{background:var(--accent-soft)}
+tfoot td{font-weight:600;background:var(--surface-2);border-top:1px solid var(--line-strong)}
+
+.pill{display:inline-block;font:600 11px var(--f-body);padding:2px 8px;border-radius:999px;letter-spacing:.02em}
+.pill.ext{background:var(--ext-soft);color:var(--ext)}
+.pill.int{background:var(--int-soft);color:var(--int)}
+.pill.promo{background:var(--promo-soft);color:var(--promo)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--accent-soft);color:var(--accent)}
+
+.bar{height:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;overflow:hidden;min-width:90px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.bar i.full{background:var(--warn)}
+
+/* CATS grid */
+table.cats td.d,table.cats th.d{text-align:center;font-family:var(--f-mono);font-variant-numeric:tabular-nums;min-width:44px;padding:6px 4px}
+table.cats th.d{text-transform:none;letter-spacing:0}
+table.cats th.d small{display:block;font-weight:500;font-size:10px}
+table.cats .we{background:var(--weekend)}
+table.cats .ho{background:var(--hol);color:var(--hol-ink)}
+table.cats td.proj{position:sticky;left:0;background:var(--surface);z-index:1;min-width:150px;max-width:220px;white-space:normal}
+table.cats th.proj{position:sticky;left:0;z-index:2}
+table.cats td.proj b{display:block;font-weight:600}
+table.cats td.proj code{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+table.cats tfoot td.proj{background:var(--surface-2)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid var(--line)}
+
+/* matrix edit */
+table.edit td{padding:4px 6px}
+table.edit input[type=text]{width:100%;min-width:120px}
+table.edit input[type=number]{width:92px}
+table.edit td.chk{text-align:center}
+table.edit input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
+th.vert{white-space:normal;min-width:84px;max-width:110px;text-transform:none;letter-spacing:0;font-size:11px}
+
+.note{font-size:12.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:10px 12px;max-width:80ch}
+.note b{color:var(--ink)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-weight:600;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.warnlist{margin:0;padding-left:18px;color:var(--warn);font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>Reparto CATS</h1>
+      <p>Reparte las horas de cada quincena entre proyectos externos, internos y de promoción sin pasarse del tope de cada proyecto.</p>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="res" aria-selected="true">Reparto</button>
+      <button role="tab" data-tab="team" aria-selected="false">Equipo</button>
+      <button role="tab" data-tab="proj" aria-selected="false">Proyectos</button>
+      <button role="tab" data-tab="cfg" aria-selected="false">Calendario y reglas</button>
+      <button role="tab" data-tab="data" aria-selected="false">Guardar / cargar</button>
+    </nav>
+  </div>
+</header>
+<main><div class="wrap" id="view"></div></main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const STORE='reparto-cats-v1';
+const TYPES={ext:'Externo',int:'Interno',promo:'Promoción'};
+const TYPE_ORDER={ext:0,int:1,promo:2};
+const DOW=['DO','LU','MA','MI','JU','VI','SA'];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const fmtH=n=>(Math.round(n*100)/100).toFixed(2);
+const fmtE=n=>isFinite(n)?Math.round(n).toLocaleString('es-ES')+' €':'Sin tope';
+const pad=n=>String(n).padStart(2,'0');
+
+function example(){
+  const projects=[
+    {id:'adeslas',name:'ADESLAS',code:'0280SEG092SO',desc:'Seguridad operativa',type:'ext',cap:90000,woff:10,prev:0},
+    {id:'iberia',name:'IBERIA',code:'0280IBE054D0',desc:'IB - Task Force DI',type:'ext',cap:70000,woff:15,prev:0},
+    {id:'interno',name:'Iniciativa interna',code:'INT-EJEMPLO',desc:'Ejemplo: cambia código y tope',type:'int',cap:20000,woff:0,prev:0},
+    {id:'promo',name:'PROMO NURIA',code:'000280022CB9',desc:'Promoción Nuria',type:'promo',cap:null,woff:0,prev:0}
+  ];
+  const raw=[['Nuria','Socia',671],['Sergio','Senior Manager',395],['Jordi','Manager 1',336],['Marta','Manager 1',336],['Jose Antonio','Exp. Senior 1',241],['Camila','Exp. Senior 1',241],['Paula','Senior 1',187],['Alfonso','Senior 1',187],['Juan','Senior 1',187],['Bea Gonzalez','Senior 1',187],['Ana','Assistant 2',149],['Amaya','Assistant 2',149],['David','Assistant 2',149],['Nacho','Assistant 2',149],['Bea Casado','Assistant 2',149],['Bea García','Manager',358],['Adrian Ortega','Senior 1',187],['Victor Herrero','Assistant 1',126],['Alonso Vicente','Assistant 2',149],['Chen Xin','Assistant 2',149],['David García Arribas','Assistant 2',149],['Juan Checa','Assistant 1',126],['David García Rivera','Assistant 1',126],['Natalia Guillén','Assistant 1',126],['Lara','Assistant 1',126],['Alberto Caballero Ferrero','Assistant 1',126],['Javier Guerrero','Assistant 1',126],['Elsa Mbasogo','Assistant 1',126],['Carlos Ballesteros','Exp. Senior 1',241],['María Beltran','Exp. Senior 1',241],['Miguel Angel Martinez','Exp. Senior 2',252]];
+  const asg={adeslas:['Nuria','Sergio','Juan','Paula','Ana','Bea Gonzalez'],iberia:['Jordi','Juan','Alfonso','Amaya','David'],interno:['Camila','Jose Antonio','Nacho'],promo:['Juan']};
+  const people=raw.map(([name,cat,fee])=>({id:uid(),name,cat,fee,absences:'',projects:Object.keys(asg).filter(k=>asg[k].includes(name))}));
+  return {
+    month:'2026-11',
+    settings:{hWeek:9,hFri:7,woffMode:'fee',order:'own',step:0.5,
+      holidays:'2026-01-01, 2026-01-06, 2026-04-02, 2026-04-03, 2026-05-01, 2026-05-15, 2026-10-12, 2026-11-02, 2026-11-09, 2026-12-07, 2026-12-08, 2026-12-25'},
+    projects,people,example:true
+  };
+}
+let S;
+try{S=JSON.parse(localStorage.getItem(STORE))}catch(e){S=null}
+if(!S||!S.people)S=example();
+function save(){try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}}
+
+let tab='res', half='1', selPerson=null;
+
+/* ---------- motor de reparto ---------- */
+function parseDates(str){return new Set(String(str||'').split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean))}
+function monthDays(){
+  const [y,m]=S.month.split('-').map(Number);
+  const n=new Date(y,m,0).getDate(); const hol=parseDates(S.settings.holidays); const out=[];
+  for(let d=1;d<=n;d++){
+    const dt=new Date(y,m-1,d), dow=dt.getDay(), iso=`${y}-${pad(m)}-${pad(d)}`;
+    const we=dow===0||dow===6, ho=hol.has(iso);
+    out.push({d,dow,iso,we,ho,h:(we||ho)?0:(dow===5?+S.settings.hFri:+S.settings.hWeek)});
+  }
+  return out;
+}
+function poolOf(p){
+  if(p.cap===null||p.cap===''||p.cap===undefined||isNaN(+p.cap))return Infinity;
+  const w=Math.min(Math.max(+p.woff||0,0),99)/100, cap=+p.cap;
+  const pool=S.settings.woffMode==='fee'?cap/(1-w):cap*(1-w);
+  return Math.max(pool-(+p.prev||0),0);
+}
+function compute(){
+  const days=monthDays(), step=+S.settings.step||0.5;
+  const projs=S.projects, pool={}, used={};
+  projs.forEach(p=>{pool[p.id]=poolOf(p);used[p.id]=0});
+  const people=S.people.map(pe=>{
+    const abs=parseDates(pe.absences);
+    const cap=days.map(x=>abs.has(x.iso)?0:x.h);
+    return {pe,cap,R:cap.reduce((a,b)=>a+b,0),total:cap.reduce((a,b)=>a+b,0),alloc:{}};
+  });
+  const tiers=S.settings.order==='own'
+    ?[['own','ext'],['own','int'],['own','promo'],['other','ext'],['other','int'],['other','promo']]
+    :[['own','ext'],['other','ext'],['own','int'],['other','int'],['own','promo'],['other','promo']];
+  for(const [who,type] of tiers){
+    let progress=true;
+    while(progress){
+      progress=false;
+      for(const P of people){
+        if(P.R<=1e-9)continue;
+        const fee=+P.pe.fee||0;
+        const give=Math.min(step,P.R);
+        let best=null,bestScore=-1;
+        for(const pr of projs){
+          if(pr.type!==type)continue;
+          const own=P.pe.projects.includes(pr.id);
+          if((who==='own')!==own)continue;
+          if(pool[pr.id]+1e-6<give*fee)continue;
+          // preferimos el proyecto con más presupuesto restante; a igualdad, donde menos horas lleva
+          const score=(pool[pr.id]===Infinity?1e15:pool[pr.id])-(P.alloc[pr.id]||0)*1e-3;
+          if(score>bestScore){bestScore=score;best=pr}
+        }
+        if(!best)continue;
+        P.alloc[best.id]=(P.alloc[best.id]||0)+give;
+        P.R-=give; pool[best.id]-=give*fee; used[best.id]+=give*fee;
+        progress=true;
+      }
+    }
+  }
+  // repartir por días: rellenamos en orden externo → interno → promoción
+  for(const P of people){
+    const left=P.cap.slice(); P.grid={};
+    const ids=Object.keys(P.alloc).sort((a,b)=>{
+      const pa=projs.find(x=>x.id===a),pb=projs.find(x=>x.id===b);
+      return TYPE_ORDER[pa.type]-TYPE_ORDER[pb.type];
+    });
+    for(const id of ids){
+      let rem=P.alloc[id]; const row=new Array(days.length).fill(0);
+      for(let i=0;i<days.length&&rem>1e-9;i++){
+        const t=Math.min(left[i],rem); if(t<=0)continue;
+        row[i]+=t; left[i]-=t; rem-=t;
+      }
+      P.grid[id]=row;
+    }
+  }
+  return {days,people,pool,used};
+}
+
+/* ---------- vistas ---------- */
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1800)}
+function copyText(txt,ok){
+  const done=()=>toast(ok);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done,()=>fallback());
+  }else fallback();
+  function fallback(){
+    const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');done()}catch(e){toast('No se pudo copiar: selecciona y copia a mano')}
+    ta.remove();
+  }
+}
+function halfRange(days){
+  if(half==='1')return days.map((x,i)=>i).filter(i=>days[i].d<=15);
+  if(half==='2')return days.map((x,i)=>i).filter(i=>days[i].d>=16);
+  return days.map((x,i)=>i);
+}
+function monthLabel(){
+  const [y,m]=S.month.split('-').map(Number);
+  return new Date(y,m-1,1).toLocaleDateString('es-ES',{month:'long',year:'numeric'});
+}
+const projById=id=>S.projects.find(p=>p.id===id);
+
+function viewRes(){
+  const R=compute(); const idx=halfRange(R.days);
+  const sum=(arr)=>idx.reduce((a,i)=>a+(arr[i]||0),0);
+  let tot=0,ext=0,unassigned=0;
+  const rows=R.people.map(P=>{
+    const t={ext:0,int:0,promo:0};
+    for(const id in P.grid){const pr=projById(id);t[pr.type]+=sum(P.grid[id])}
+    const cap=sum(P.cap), asg=t.ext+t.int+t.promo, un=cap-asg;
+    tot+=asg;ext+=t.ext;unassigned+=un;
+    return {P,t,cap,asg,un};
+  });
+  if(!selPerson||!S.people.find(p=>p.id===selPerson)){const j=S.people.find(p=>p.name==='Juan')||S.people[0];selPerson=j&&j.id}
+  const exhausted=S.projects.filter(p=>isFinite(R.pool[p.id])&&poolOf(p)>0&&R.pool[p.id]<poolOf(p)*0.02);
+  const sel=rows.find(r=>r.P.pe.id===selPerson);
+  const noPromo=!S.projects.some(p=>p.type==='promo'&&!isFinite(poolOf(p)));
+
+  return `
+  ${S.example?`<div class="note"><b>Datos de ejemplo.</b> Los nombres y fees salen de tu Excel (FY27), pero los topes, WOFF y quién está en cada proyecto son inventados. Cámbialos en <b>Proyectos</b> y <b>Equipo</b>; se guardan en este navegador.</div>`:''}
+  <section class="panel">
+    <div class="row">
+      <label class="f">Mes<input type="month" id="month" value="${esc(S.month)}"></label>
+      <div class="f" style="gap:4px"><span style="font-size:12px;color:var(--muted);font-weight:500">Periodo</span>
+        <div class="seg" role="group">
+          <button data-half="1" aria-pressed="${half==='1'}">1–15</button>
+          <button data-half="2" aria-pressed="${half==='2'}">16–${R.days.length}</button>
+          <button data-half="m" aria-pressed="${half==='m'}">Mes entero</button>
+        </div>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn" id="copyTeam">Copiar resumen del equipo</button>
+    </div>
+    <p class="sub">El tope de cada proyecto es mensual, así que el reparto se calcula para el mes completo y aquí ves la quincena que toque cargar en ${esc(monthLabel())}.</p>
+  </section>
+
+  <div class="stats">
+    <div class="stat"><span class="k">Horas a cargar</span><span class="v">${fmtH(tot)}</span></div>
+    <div class="stat"><span class="k">En externos</span><span class="v">${tot?Math.round(ext/tot*100):0}%</span></div>
+    <div class="stat"><span class="k">Sin asignar</span><span class="v ${unassigned>0.01?'warn':'ok'}">${fmtH(unassigned)}</span></div>
+    <div class="stat"><span class="k">Proyectos agotados</span><span class="v">${exhausted.length} / ${S.projects.filter(p=>isFinite(poolOf(p))).length}</span></div>
+  </div>
+  ${unassigned>0.01?`<div class="note" style="border-color:var(--warn)"><b style="color:var(--warn)">Hay horas que no caben en ningún proyecto.</b> ${noPromo?'Añade un proyecto de promoción sin tope (deja el tope vacío) para que absorba lo que sobre.':'Revisa los topes o añade proyectos.'}</div>`:''}
+
+  <section class="panel">
+    <h2>Hoja de ${esc(sel?sel.P.pe.name:'—')}</h2>
+    ${sel?catsGrid(R,sel,idx):'<p class="sub">Añade personas en Equipo.</p>'}
+  </section>
+
+  <section class="panel">
+    <h2>Equipo</h2>
+    <p class="sub">Pulsa una fila para ver su hoja.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Persona</th><th>Categoría</th><th class="n">Disponibles</th><th class="n">Externo</th><th class="n">Interno</th><th class="n">Promoción</th><th>Estado</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr class="click ${r.P.pe.id===selPerson?'sel':''}" data-person="${r.P.pe.id}">
+        <td>${esc(r.P.pe.name)}</td><td>${esc(r.P.pe.cat)}</td><td class="n">${fmtH(r.cap)}</td>
+        <td class="n">${fmtH(r.t.ext)}</td><td class="n">${fmtH(r.t.int)}</td><td class="n">${fmtH(r.t.promo)}</td>
+        <td>${r.un>0.01?`<span class="pill warn">Faltan ${fmtH(r.un)} h</span>`:`<span class="pill ok">Completo</span>`}</td></tr>`).join('')}</tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <h2>Consumo de proyectos en el mes</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Proyecto</th><th>Tipo</th><th class="n">Tope</th><th class="n">WOFF</th><th class="n">Disponible</th><th class="n">Usado</th><th class="n">Horas</th><th>Uso</th></tr></thead>
+      <tbody>${S.projects.map(p=>{
+        const pool=poolOf(p), u=R.used[p.id], hrs=R.people.reduce((a,P)=>a+(P.alloc[p.id]||0),0);
+        const pct=isFinite(pool)&&pool>0?Math.min(u/pool*100,100):0;
+        return `<tr><td><b>${esc(p.name)}</b><br><code style="font-family:var(--f-mono);font-size:11px;color:var(--muted)">${esc(p.code)}</code></td>
+        <td><span class="pill ${p.type}">${TYPES[p.type]}</span></td>
+        <td class="n">${fmtE(isFinite(pool)?+p.cap:Infinity)}</td><td class="n">${isFinite(pool)?(+p.woff||0)+'%':'—'}</td>
+        <td class="n">${fmtE(pool)}</td><td class="n">${Math.round(u).toLocaleString('es-ES')} €</td><td class="n">${fmtH(hrs)}</td>
+        <td>${isFinite(pool)?`<div class="bar"><i class="${pct>98?'full':''}" style="width:${pct}%"></i></div>`:'<span class="pill promo">Absorbe el resto</span>'}</td></tr>`}).join('')}</tbody>
+    </table></div>
+  </section>`;
+}
+
+function catsGrid(R,sel,idx){
+  const P=sel.P, ids=Object.keys(P.grid).sort((a,b)=>TYPE_ORDER[projById(a).type]-TYPE_ORDER[projById(b).type]);
+  const cls=i=>R.days[i].we?'we':(R.days[i].ho?'ho':'');
+  const head=idx.map(i=>`<th class="d ${cls(i)}">${DOW[R.days[i].dow]}<small>${R.days[i].d}</small></th>`).join('');
+  const body=ids.map(id=>{
+    const pr=projById(id), row=P.grid[id], t=idx.reduce((a,i)=>a+row[i],0);
+    if(t<=0)return '';
+    return `<tr><td class="proj"><b>${esc(pr.name)}</b><code>${esc(pr.code)}</code> <span class="pill ${pr.type}">${TYPES[pr.type]}</span></td>
+      ${idx.map(i=>`<td class="d ${cls(i)}">${row[i]?fmtH(row[i]):''}</td>`).join('')}<td class="n"><b>${fmtH(t)}</b></td>
+      <td><button class="btn ghost" style="color:var(--accent)" data-copyrow="${id}">Copiar</button></td></tr>`;
+  }).join('');
+  const totRow=idx.map(i=>{const s=ids.reduce((a,id)=>a+P.grid[id][i],0);return `<td class="d ${cls(i)}">${s?fmtH(s):''}</td>`}).join('');
+  const stdRow=idx.map(i=>`<td class="d ${cls(i)}">${fmtH(P.cap[i])}</td>`).join('');
+  const tAll=idx.reduce((a,i)=>a+ids.reduce((b,id)=>b+P.grid[id][i],0),0), tStd=idx.reduce((a,i)=>a+P.cap[i],0);
+  return `<div class="row"><label class="f">Persona<select id="personSel">${S.people.map(p=>`<option value="${p.id}" ${p.id===selPerson?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label>
+    <span class="spacer"></span><button class="btn primary" id="copyPerson">Copiar hoja completa</button></div>
+  <div class="scroll"><table class="cats">
+    <thead><tr><th class="proj">Narrative / Job</th>${head}<th class="n">Total</th><th></th></tr></thead>
+    <tbody>${body||`<tr><td class="proj" colspan="${idx.length+3}">Sin horas en este periodo.</td></tr>`}</tbody>
+    <tfoot><tr><td class="proj">Total</td>${totRow}<td class="n">${fmtH(tAll)}</td><td></td></tr>
+    <tr><td class="proj">Horas estándar</td>${stdRow}<td class="n">${fmtH(tStd)}</td><td></td></tr></tfoot>
+  </table></div>
+  <div class="legend"><span><i style="background:var(--weekend)"></i>Fin de semana</span><span><i style="background:var(--hol)"></i>Festivo</span><span>“Copiar” deja las horas de la fila separadas por tabuladores, en el mismo orden de días que el CATS.</span></div>`;
+}
+
+function viewTeam(){
+  const pj=S.projects;
+  return `<section class="panel">
+    <div class="row"><h2>Equipo</h2><span class="spacer"></span><button class="btn primary" id="addPerson">Añadir persona</button></div>
+    <p class="sub">Marca los proyectos de cada persona: ahí van sus horas primero. Ausencias: fechas sueltas (AAAA-MM-DD) separadas por comas o rangos con dos puntos, p. ej. 2026-11-23:2026-11-27.</p>
+    <div class="scroll"><table class="edit">
+      <thead><tr><th>Nombre</th><th>Categoría</th><th class="n">Fee €/h</th>${pj.map(p=>`<th class="vert">${esc(p.name)}<br><span class="pill ${p.type}">${TYPES[p.type]}</span></th>`).join('')}<th>Ausencias</th><th></th></tr></thead>
+      <tbody>${S.people.map(pe=>`<tr data-pid="${pe.id}">
+        <td><input type="text" id="pn-${pe.id}" data-f="name" value="${esc(pe.name)}"></td>
+        <td><input type="text" id="pc-${pe.id}" data-f="cat" value="${esc(pe.cat)}" style="min-width:110px"></td>
+        <td><input type="number" id="pf-${pe.id}" data-f="fee" min="0" step="1" value="${esc(pe.fee)}"></td>
+        ${pj.map(p=>`<td class="chk"><input type="checkbox" id="pa-${pe.id}-${p.id}" data-asg="${p.id}" ${pe.projects.includes(p.id)?'checked':''} aria-label="${esc(pe.name)} en ${esc(p.name)}"></td>`).join('')}
+        <td><input type="text" id="pab-${pe.id}" data-f="absences" value="${esc(pe.absences)}" placeholder="—" style="min-width:180px"></td>
+        <td><button class="btn ghost" data-delperson="${pe.id}" aria-label="Quitar ${esc(pe.name)}">Quitar</button></td></tr>`).join('')}</tbody>
+    </table></div></section>`;
+}
+
+function viewProj(){
+  return `<section class="panel">
+    <div class="row"><h2>Proyectos</h2><span class="spacer"></span><button class="btn primary" id="addProj">Añadir proyecto</button></div>
+    <p class="sub">Tope mensual en euros y WOFF en %. Deja el tope vacío en el proyecto de promoción para que absorba las horas que sobren. “Ya consumido” resta lo que se haya cargado este mes fuera de esta herramienta.</p>
+    <div class="scroll"><table class="edit">
+      <thead><tr><th>Narrative</th><th>Código job</th><th>Descripción</th><th>Tipo</th><th class="n">Tope mes €</th><th class="n">WOFF %</th><th class="n">Ya consumido €</th><th class="n">Disponible</th><th></th></tr></thead>
+      <tbody>${S.projects.map(p=>`<tr data-prid="${p.id}">
+        <td><input type="text" id="jn-${p.id}" data-f="name" value="${esc(p.name)}"></td>
+        <td><input type="text" id="jc-${p.id}" data-f="code" value="${esc(p.code)}" style="font-family:var(--f-mono)"></td>
+        <td><input type="text" id="jd-${p.id}" data-f="desc" value="${esc(p.desc)}"></td>
+        <td><select id="jt-${p.id}" data-f="type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${p.type===k?'selected':''}>${v}</option>`).join('')}</select></td>
+        <td><input type="number" id="jcap-${p.id}" data-f="cap" min="0" step="100" value="${p.cap===null?'':esc(p.cap)}" placeholder="Sin tope"></td>
+        <td><input type="number" id="jw-${p.id}" data-f="woff" min="0" max="99" step="1" value="${esc(p.woff)}" style="width:70px"></td>
+        <td><input type="number" id="jp-${p.id}" data-f="prev" min="0" step="100" value="${esc(p.prev)}"></td>
+        <td class="n">${fmtE(poolOf(p))}</td>
+        <td><button class="btn ghost" data-delproj="${p.id}" aria-label="Quitar ${esc(p.name)}">Quitar</button></td></tr>`).join('')}</tbody>
+    </table></div>
+    <div class="note"><b>Cómo se calcula el disponible.</b> ${S.settings.woffMode==='fee'
+      ?'El WOFF es un descuento sobre la tarifa: cada hora cuesta fee × (1 − WOFF), así que el tope cubre tope ÷ (1 − WOFF) en valor a fee estándar. Con 10.000 € y 20 % de WOFF caben 12.500 € de horas a fee.'
+      :'El WOFF se descuenta del tope: disponible = tope × (1 − WOFF). Con 10.000 € y 20 % de WOFF caben 8.000 € de horas a fee.'}
+      Las horas de una persona en el proyecto son ese importe ÷ su fee, y el disponible se comparte entre todos los que cargan allí. Puedes cambiar el criterio en Calendario y reglas.</div>
+  </section>`;
+}
+
+function viewCfg(){
+  const s=S.settings;
+  return `<section class="panel">
+    <h2>Jornada</h2>
+    <div class="row">
+      <label class="f">Lunes a jueves (h)<input type="number" id="hWeek" min="0" max="24" step="0.5" value="${esc(s.hWeek)}"></label>
+      <label class="f">Viernes (h)<input type="number" id="hFri" min="0" max="24" step="0.5" value="${esc(s.hFri)}"></label>
+      <label class="f">Bloque mínimo (h)<select id="step"><option value="0.5" ${s.step==0.5?'selected':''}>0,5</option><option value="1" ${s.step==1?'selected':''}>1</option><option value="0.25" ${s.step==0.25?'selected':''}>0,25</option></select></label>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Festivos</h2>
+    <p class="sub">Fechas AAAA-MM-DD separadas por comas. Vienen cargados los de 2026 en Madrid capital (nacionales, autonómicos y locales: 2 y 9 de noviembre, 7 y 8 de diciembre). Revísalos si alguien trabaja en otra ciudad.</p>
+    <textarea id="holidays" style="min-height:80px">${esc(s.holidays)}</textarea>
+  </section>
+  <section class="panel">
+    <h2>Reglas de reparto</h2>
+    <label class="f">Cómo se aplica el WOFF
+      <select id="woffMode"><option value="fee" ${s.woffMode==='fee'?'selected':''}>Descuento sobre la tarifa: tope ÷ (1 − WOFF)</option><option value="cap" ${s.woffMode==='cap'?'selected':''}>Descuento sobre el tope: tope × (1 − WOFF)</option></select></label>
+    <label class="f">Orden de prioridad
+      <select id="order"><option value="own" ${s.order==='own'?'selected':''}>Primero tus proyectos (ext → int → promo), luego los de otros</option><option value="type" ${s.order==='type'?'selected':''}>Primero externos (tuyos y luego de otros), luego internos, luego promoción</option></select></label>
+    <div class="note">Dentro de cada paso, el reparto va por turnos de medio bloque entre las personas que pueden cargar, para que nadie se coma solo el presupuesto de un proyecto compartido. Si una persona tiene varios proyectos del mismo tipo, tira del que tenga más presupuesto libre.</div>
+  </section>`;
+}
+
+function viewData(){
+  return `<section class="panel">
+    <h2>Guardar / cargar</h2>
+    <p class="sub">Los cambios se guardan solos en este navegador. Para pasarle la configuración a otra persona o a otro ordenador, copia este texto y pégalo allí en el mismo cuadro.</p>
+    <textarea id="json">${esc(JSON.stringify({...S,example:undefined},null,1))}</textarea>
+    <div class="row">
+      <button class="btn" id="copyJson">Copiar configuración</button>
+      <button class="btn primary" id="loadJson">Cargar lo pegado</button>
+      <span class="spacer"></span>
+      <button class="btn" id="resetBtn">Volver a los datos de ejemplo</button>
+    </div>
+    <p class="sub" id="resetMsg" hidden></p>
+  </section>`;
+}
+
+/* ---------- render y eventos ---------- */
+function expandAbsences(str){
+  // admite rangos AAAA-MM-DD:AAAA-MM-DD
+  return String(str||'').split(/[\s,;]+/).filter(Boolean).flatMap(tok=>{
+    const m=tok.split(':'); if(m.length!==2)return [tok];
+    const a=new Date(m[0]+'T00:00'),b=new Date(m[1]+'T00:00'); if(isNaN(a)||isNaN(b))return [tok];
+    const out=[];for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1))out.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);return out;
+  }).join(',');
+}
+const _parse=parseDates; parseDates=s=>_parse(expandAbsences(s));
+
+function render(){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
+  const v=document.getElementById('view');
+  v.innerHTML=({res:viewRes,team:viewTeam,proj:viewProj,cfg:viewCfg,data:viewData})[tab]();
+}
+function dirty(){S.example=S.example&&false;save()}
+
+document.querySelector('nav.tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tab=b.dataset.tab;render()});
+const view=document.getElementById('view');
+
+view.addEventListener('click',e=>{
+  const t=e.target;
+  const hb=t.closest('[data-half]'); if(hb){half=hb.dataset.half;render();return}
+  const tr=t.closest('tr[data-person]'); if(tr){selPerson=tr.dataset.person;render();document.querySelector('.cats')?.scrollIntoView({behavior:'smooth',block:'center'});return}
+  if(t.id==='addPerson'){S.people.push({id:uid(),name:'Nueva persona',cat:'Assistant 1',fee:126,absences:'',projects:[]});dirty();render();return}
+  if(t.dataset.delperson){S.people=S.people.filter(p=>p.id!==t.dataset.delperson);dirty();render();toast('Persona quitada');return}
+  if(t.id==='addProj'){S.projects.push({id:uid(),name:'NUEVO PROYECTO',code:'',desc:'',type:'ext',cap:0,woff:0,prev:0});dirty();render();return}
+  if(t.dataset.delproj){const id=t.dataset.delproj;S.projects=S.projects.filter(p=>p.id!==id);S.people.forEach(p=>p.projects=p.projects.filter(x=>x!==id));dirty();render();toast('Proyecto quitado');return}
+  if(t.dataset.copyrow||t.id==='copyPerson'||t.id==='copyTeam'){
+    const R=compute(), idx=halfRange(R.days);
+    const P=R.people.find(x=>x.pe.id===selPerson);
+    const line=(id)=>idx.filter(i=>!R.days[i].we).map(i=>P.grid[id][i]?String(P.grid[id][i]).replace('.',','):'').join('\t');
+    if(t.dataset.copyrow){copyText(line(t.dataset.copyrow),'Fila copiada (solo días laborables)');return}
+    if(t.id==='copyPerson'){
+      const ids=Object.keys(P.grid).filter(id=>idx.some(i=>P.grid[id][i]>0));
+      const hdr=['Narrative','Job'].concat(idx.filter(i=>!R.days[i].we).map(i=>DOW[R.days[i].dow]+' '+R.days[i].d)).join('\t');
+      copyText([hdr,...ids.map(id=>{const pr=projById(id);return pr.name+'\t'+pr.code+'\t'+line(id)})].join('\n'),'Hoja copiada');return
+    }
+    const lines=['Persona\tNarrative\tJob\tHoras'];
+    R.people.forEach(Q=>{for(const id in Q.grid){const h=idx.reduce((a,i)=>a+Q.grid[id][i],0);if(h>0){const pr=projById(id);lines.push([Q.pe.name,pr.name,pr.code,String(h).replace('.',',')].join('\t'))}}});
+    copyText(lines.join('\n'),'Resumen copiado: pégalo en Excel');return;
+  }
+  if(t.id==='copyJson'){copyText(document.getElementById('json').value,'Configuración copiada');return}
+  if(t.id==='loadJson'){
+    try{const d=JSON.parse(document.getElementById('json').value);if(!Array.isArray(d.people)||!Array.isArray(d.projects))throw 0;S=d;S.example=false;save();toast('Configuración cargada');tab='res';render()}
+    catch(err){toast('El texto no es una configuración válida')}
+    return;
+  }
+  if(t.id==='resetBtn'){
+    const m=document.getElementById('resetMsg');
+    if(t.dataset.armed){S=example();save();tab='res';render();toast('Datos de ejemplo restaurados');return}
+    t.dataset.armed='1';t.textContent='Pulsa otra vez para confirmar';m.hidden=false;m.textContent='Se borrarán tus personas y proyectos de este navegador.';return;
+  }
+});
+
+view.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='month'){if(t.value){S.month=t.value;save();render()}return}
+  if(t.id==='personSel'){selPerson=t.value;render();return}
+  const pr=t.closest('tr[data-pid]');
+  if(pr){const pe=S.people.find(p=>p.id===pr.dataset.pid);
+    if(t.dataset.asg){const id=t.dataset.asg;pe.projects=t.checked?[...new Set([...pe.projects,id])]:pe.projects.filter(x=>x!==id)}
+    else if(t.dataset.f==='fee')pe.fee=+t.value||0; else pe[t.dataset.f]=t.value;
+    dirty();return}
+  const jr=t.closest('tr[data-prid]');
+  if(jr){const p=S.projects.find(x=>x.id===jr.dataset.prid), f=t.dataset.f;
+    if(f==='cap')p.cap=t.value===''?null:+t.value; else if(f==='woff'||f==='prev')p[f]=+t.value||0; else p[f]=t.value;
+    dirty(); if(['cap','woff','prev','type'].includes(f))render(); return}
+  const s=S.settings;
+  if(t.id==='hWeek')s.hWeek=+t.value||0;
+  else if(t.id==='hFri')s.hFri=+t.value||0;
+  else if(t.id==='step')s.step=+t.value;
+  else if(t.id==='holidays')s.holidays=t.value;
+  else if(t.id==='woffMode')s.woffMode=t.value;
+  else if(t.id==='order')s.order=t.value;
+  else return;
+  dirty();
+});
+
+render();
+</script>
+</body>
+</html>
