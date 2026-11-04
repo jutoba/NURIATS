@@ -185,13 +185,27 @@ function blank(){
     month:`${now.getFullYear()}-${pad(now.getMonth()+1)}`,
     settings:{hWeek:9,hFri:7,woffMode:'fee',order:'own',step:0.5,
       holidays:'2026-01-01, 2026-01-06, 2026-04-02, 2026-04-03, 2026-05-01, 2026-05-15, 2026-10-12, 2026-11-02, 2026-11-09, 2026-12-07, 2026-12-08, 2026-12-25'},
-    projects:[],people:[],manual:{}
+    projects:[],people:defaultTeam(),manual:{},teamSeeded:true
   };
+}
+// Equipo FY27 (categoría y fee 2027), sin proyectos asignados
+function defaultTeam(){
+  return [['Nuria','Socia',671],['Sergio','Senior Manager',395],['Jordi','Manager 1',336],['Marta','Manager 1',336],
+    ['Jose Antonio','Exp. Senior 1',241],['Camila','Exp. Senior 1',241],['Paula','Senior 1',187],['Alfonso','Senior 1',187],
+    ['Juan','Senior 1',187],['Bea Gonzalez','Senior 1',187],['Ana','Assistant 2',149],['Amaya','Assistant 2',149],
+    ['David','Assistant 2',149],['Nacho','Assistant 2',149],['Bea Casado','Assistant 2',149],['Bea García','Manager',358],
+    ['Adrian Ortega','Senior 1',187],['Victor Herrero','Assistant 1',126],['Alonso Vicente','Assistant 2',149],
+    ['Chen Xin','Assistant 2',149],['David García Arribas','Assistant 2',149],['Juan Checa','Assistant 1',126],
+    ['David García Rivera','Assistant 1',126],['Natalia Guillén','Assistant 1',126],['Lara','Assistant 1',126],
+    ['Alberto Caballero Ferrero','Assistant 1',126],['Javier Guerrero','Assistant 1',126],['Elsa Mbasogo','Exp. Senior 1',241],
+    ['Carlos Ballesteros','Exp. Senior 1',241],['María Beltran','Exp. Senior 2',252],['Miguel Angel Martinez','Senior Manager',395]]
+    .map(([name,cat,fee])=>({id:uid(),name,cat,fee,absences:'',projects:[]}));
 }
 let S;
 try{S=JSON.parse(localStorage.getItem(STORE))}catch(e){S=null}
 if(!S||!Array.isArray(S.people))S=blank();
 if(!S.manual)S.manual={};
+if(!S.teamSeeded){if(!S.people.length)S.people=defaultTeam();S.teamSeeded=true}
 function save(){try{localStorage.setItem(STORE,JSON.stringify(S))}catch(e){}}
 
 let tab='res', half='1', selPerson=null;
@@ -532,7 +546,7 @@ function viewData(){
       <button class="btn" id="copyJson">Copiar configuración</button>
       <button class="btn primary" id="loadJson">Cargar lo pegado</button>
       <span class="spacer"></span>
-      <button class="btn" id="resetBtn">Borrar todo</button>
+      <button class="btn" id="resetBtn">Empezar de cero</button>
     </div>
     <p class="sub" id="resetMsg" hidden></p>
   </section>`;
@@ -601,8 +615,8 @@ view.addEventListener('click',e=>{
   }
   if(t.id==='resetBtn'){
     const m=document.getElementById('resetMsg');
-    if(t.dataset.armed){S=blank();save();tab='res';render();toast('Todo borrado');return}
-    t.dataset.armed='1';t.textContent='Pulsa otra vez para borrar';m.hidden=false;m.textContent='Se borrarán personas, proyectos y hojas editadas de este navegador.';return;
+    if(t.dataset.armed){S=blank();save();tab='res';render();toast('Configuración reiniciada');return}
+    t.dataset.armed='1';t.textContent='Pulsa otra vez para borrar';m.hidden=false;m.textContent='Se borrarán proyectos, asignaciones y hojas editadas; el equipo vuelve a la lista inicial.';return;
   }
 });
 
