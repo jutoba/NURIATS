@@ -238,7 +238,7 @@ function monthLabel(){const [y,m]=S.month.split('-').map(Number);return new Date
 function poolOf(p){
   if(p.cap===null||p.cap===''||p.cap===undefined||isNaN(+p.cap))return Infinity;
   const w=Math.min(Math.max(+p.woff||0,0),99)/100, cap=+p.cap;
-  const pool=S.settings.woffMode==='fee'?cap/(1-w):cap*(1-w);
+  const pool=cap/(1-w); // WOFF = % de descuento sobre el fee
   return Math.max(pool-(+p.prev||0),0);
 }
 function manualOf(pid){return (S.manual[S.month]||{})[pid]}
@@ -493,7 +493,7 @@ function viewProj(){
     <div class="row"><h2>Proyectos</h2><span class="spacer"></span><button class="btn primary" id="addProj">Añadir proyecto</button></div>
     <p class="sub">Tope mensual en euros y WOFF en %. Deja el tope vacío en el proyecto de promoción para que absorba las horas que sobren. “Ya consumido” resta lo que se haya cargado este mes fuera de esta herramienta.</p>
     ${S.projects.length?`<div class="scroll"><table class="edit">
-      <thead><tr><th>Narrative</th><th>Código job</th><th>Descripción</th><th>Tipo</th><th class="n">Tope mes €</th><th class="n">WOFF %</th><th class="n">Ya consumido €</th><th class="n">Disponible</th><th></th></tr></thead>
+      <thead><tr><th>Narrative</th><th>Código job</th><th>Descripción</th><th>Tipo</th><th class="n">Tope mes €</th><th class="n">WOFF % dto.</th><th class="n">Ya consumido €</th><th class="n">Disponible</th><th></th></tr></thead>
       <tbody>${S.projects.map(p=>`<tr data-prid="${p.id}">
         <td><input type="text" id="jn-${p.id}" data-f="name" value="${esc(p.name)}" placeholder="Narrative"></td>
         <td><input type="text" id="jc-${p.id}" data-f="code" value="${esc(p.code)}" placeholder="Código" class="mono"></td>
@@ -505,10 +505,7 @@ function viewProj(){
         <td class="n">${fmtE(poolOf(p))}</td>
         <td><button class="btn ghost" data-delproj="${p.id}" aria-label="Quitar ${esc(p.name)}">Quitar</button></td></tr>`).join('')}</tbody>
     </table></div>`:`<div class="emptybox">Aún no hay proyectos. Pulsa <b>Añadir proyecto</b> y rellena narrative, código, tipo, tope y WOFF.</div>`}
-    <div class="note"><b>Cómo se calcula el disponible.</b> ${S.settings.woffMode==='fee'
-      ?'El WOFF es un descuento sobre la tarifa: cada hora cuesta fee × (1 − WOFF), así que el tope cubre tope ÷ (1 − WOFF) en valor a fee estándar. Con 10.000 € y 20 % de WOFF caben 12.500 € de horas a fee.'
-      :'El WOFF se descuenta del tope: disponible = tope × (1 − WOFF). Con 10.000 € y 20 % de WOFF caben 8.000 € de horas a fee.'}
-      Las horas de una persona son ese importe ÷ su fee, y el disponible se comparte entre todos los que cargan en el proyecto. El criterio se cambia en Calendario y reglas.</div>
+    <div class="note"><b>Cómo se calcula el disponible.</b> El WOFF es el descuento sobre el fee de cada persona: con un 76 % de WOFF, cada hora cuenta al 24 % de su fee. Ejemplo: Santander, 6.850 € al mes y 76 % de WOFF; un Senior 1 (187 €/h) cuenta 187 × 0,24 = 44,88 € por hora, así que puede cargar 6.850 ÷ 44,88 = 152,6 h. El tope se comparte entre todos los que cargan en el proyecto.</div>
   </section>`;
 }
 
@@ -529,8 +526,6 @@ function viewCfg(){
   </section>
   <section class="panel">
     <h2>Reglas de reparto</h2>
-    <label class="f">Cómo se aplica el WOFF
-      <select id="woffMode"><option value="fee" ${s.woffMode==='fee'?'selected':''}>Descuento sobre la tarifa: tope ÷ (1 − WOFF)</option><option value="cap" ${s.woffMode==='cap'?'selected':''}>Descuento sobre el tope: tope × (1 − WOFF)</option></select></label>
     <label class="f">Orden de prioridad
       <select id="order"><option value="own" ${s.order==='own'?'selected':''}>Primero tus proyectos (ext → int → promo), luego los de otros</option><option value="type" ${s.order==='type'?'selected':''}>Primero externos (tuyos y luego de otros), luego internos, luego promoción</option></select></label>
     <div class="note">Las hojas editadas a mano se respetan y gastan presupuesto primero. El resto se reparte por turnos entre las personas que pueden cargar, para que nadie agote solo un proyecto compartido.</div>
@@ -646,7 +641,6 @@ view.addEventListener('change',e=>{
   else if(t.id==='hFri')s.hFri=+t.value||0;
   else if(t.id==='step')s.step=+t.value;
   else if(t.id==='holidays')s.holidays=t.value;
-  else if(t.id==='woffMode')s.woffMode=t.value;
   else if(t.id==='order')s.order=t.value;
   else return;
   dirty();
